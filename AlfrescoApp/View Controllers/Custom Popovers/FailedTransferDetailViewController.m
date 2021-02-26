@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -90,11 +90,6 @@ static const CGFloat kFailedTransferDetailWidth = 272.;
     containerFrame.size.height = titleLabel.frame.size.height + descriptionLabel.frame.size.height + retryButton.frame.size.height + (kFailedTransferDetailPadding * 4);
     [containerView setFrame:containerFrame];
     [self setView:containerView];
-}
-
--(BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation
-{
-    return YES;
 }
 
 #pragma mark - Button Action

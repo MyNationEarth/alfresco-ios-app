@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -69,6 +69,10 @@
 + (UIColor *)borderGreyColor
 {
     return [UIColor colorWithRed:(CGFloat)212.0/255.0 green:(CGFloat)212.0/255.0 blue:212.0/255.0 alpha:1.0f];
+}
+
++ (UIColor *)documentDetailsColor {
+    return [UIColor colorWithRed:138/255.0 green:137/255.0 blue:139/255.0 alpha:1.0f];
 }
 
 + (UIColor *)systemNoticeInformationColor

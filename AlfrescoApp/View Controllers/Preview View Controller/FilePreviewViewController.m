@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -27,6 +27,8 @@
 #import "FullScreenAnimationController.h"
 #import "ALFPreviewController.h"
 #import "AlfrescoNode+Sync.h"
+#import "RealmSyncCore.h"
+#import "AccountManager.h"
 
 static CGFloat const kAnimationFadeSpeed = 0.5f;
 static CGFloat const kAnimationDelayTime = 1.0f;
@@ -225,7 +227,7 @@ static CGFloat sDownloadProgressHeight;
     
     previewVC.gestureDelegate = self;
     
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         previewVC.view.hidden = YES;
         previewVC.previewController.currentPreviewItemIndex = 1;
         previewVC.view.frame = self.view.bounds;
@@ -489,7 +491,7 @@ static CGFloat sDownloadProgressHeight;
     
     if ([self.document isNodeInSyncList])
     {
-        NSString *contentPath = [self.document contentPath];
+        NSString *contentPath = [[RealmSyncCore sharedSyncCore] contentPathForNode:self.document forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];;
         BOOL isDirectory = NO;
         if (![[AlfrescoFileManager sharedManager] fileExistsAtPath:contentPath isDirectory:&isDirectory])
         {
@@ -556,7 +558,7 @@ static CGFloat sDownloadProgressHeight;
         FilePreviewViewController *presentationViewController = nil;
         if ([self.document isNodeInSyncList])
         {
-            NSString *filePath = [self.document contentPath];
+            NSString *filePath = [[RealmSyncCore sharedSyncCore] contentPathForNode:self.document forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];;
             presentationViewController = [[FilePreviewViewController alloc] initWithFilePath:filePath document:self.document];
         }
         else

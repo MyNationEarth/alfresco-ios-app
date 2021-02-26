@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -38,6 +38,8 @@
 #import "PrintingWebView.h"
 #import "RealmSyncNodeInfo.h"
 #import "RealmManager.h"
+#import "AFPItemIdentifier.h"
+@import WebKit;
 
 @interface ActionViewHandler () <MFMailComposeViewControllerDelegate, UIDocumentInteractionControllerDelegate, DownloadsPickerDelegate, UploadFormViewControllerDelegate>
 
@@ -63,8 +65,7 @@
     {
         self.node = node;
         self.session = session;
-        self.documentService = [[AlfrescoDocumentFolderService alloc] initWithSession:session];
-        self.ratingService = [[AlfrescoRatingService alloc] initWithSession:session];
+        [self setupServicesForSession:session];
         self.controller = controller;
         self.queuedCompletionBlocks = [NSMutableArray array];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(downloadComplete:) name:kDocumentPreviewManagerDocumentDownloadCompletedNotification object:nil];
@@ -78,6 +79,12 @@
 - (void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)setupServicesForSession:(id<AlfrescoSession>)session
+{
+    self.documentService = [[AlfrescoDocumentFolderService alloc] initWithSession:session];
+    self.ratingService = [[AlfrescoRatingService alloc] initWithSession:session];
 }
 
 - (void)editingDocumentCompleted:(NSNotification *)notification
@@ -102,6 +109,10 @@
                                        kActionCollectionItemUpdateItemImageKey : @"actionsheet-unlike.png"};
             [[NSNotificationCenter defaultCenter] postNotificationName:kActionCollectionItemUpdateNotification object:kActionCollectionIdentifierLike userInfo:userInfo];
         }
+        else
+        {
+            [Notifier notifyWithAlfrescoError:error];
+        }
     }];
 }
 
@@ -122,6 +133,10 @@
                                        kActionCollectionItemUpdateItemImageKey : @"actionsheet-like.png"};
             [[NSNotificationCenter defaultCenter] postNotificationName:kActionCollectionItemUpdateNotification object:kActionCollectionIdentifierUnlike userInfo:userInfo];
         }
+        else
+        {
+            [Notifier notifyWithAlfrescoError:error];
+        }
     }];
 }
 
@@ -137,10 +152,16 @@
                                                                label:[weakSelf analyticsLabel]
                                                                value:@1];
             
+            [weakSelf informFavoritesEnumerator];
             NSDictionary *userInfo = @{kActionCollectionItemUpdateItemIndentifier : kActionCollectionIdentifierUnfavourite,
                                        kActionCollectionItemUpdateItemTitleKey : NSLocalizedString(@"action.unfavourite", @"Unfavourite Action"),
                                        kActionCollectionItemUpdateItemImageKey : @"actionsheet-unfavorite.png"};
             [[NSNotificationCenter defaultCenter] postNotificationName:kActionCollectionItemUpdateNotification object:kActionCollectionIdentifierFavourite userInfo:userInfo];
+            
+        }
+        else
+        {
+            [Notifier notifyWithAlfrescoError:error];
         }
     }];
 }
@@ -157,17 +178,25 @@
                                                                label:[weakSelf analyticsLabel]
                                                                value:@1];
             
+            [weakSelf informFavoritesEnumerator];
             NSDictionary *userInfo = @{kActionCollectionItemUpdateItemIndentifier : kActionCollectionIdentifierFavourite,
                                        kActionCollectionItemUpdateItemTitleKey : NSLocalizedString(@"action.favourite", @"Favourite Action"),
                                        kActionCollectionItemUpdateItemImageKey : @"actionsheet-favorite.png"};
             [[NSNotificationCenter defaultCenter] postNotificationName:kActionCollectionItemUpdateNotification object:kActionCollectionIdentifierUnfavourite userInfo:userInfo];
+        }
+        else
+        {
+            [Notifier notifyWithAlfrescoError:error];
         }
     }];
 }
 
 - (AlfrescoRequest *)pressedEmailActionItem:(ActionCollectionItem *)actionItem documentPath:(NSString *)documentPath documentLocation:(InAppDocumentLocation)location
 {
+    __weak typeof(self) weakSelf = self;
     void (^displayEmailBlock)(NSString *filePath) = ^(NSString *filePath) {
+        __strong typeof(self) strongSelf = weakSelf;
+        
         if (filePath && [MFMailComposeViewController canSendMail])
         {
             MFMailComposeViewController *emailController = [[MFMailComposeViewController alloc] init];
@@ -180,7 +209,7 @@
             {
                 mimeType = @"application/octet-stream";
             }
-            _emailedFileMimetype = mimeType;
+            strongSelf->_emailedFileMimetype = mimeType;
             
             NSData *documentData = [[AlfrescoFileManager sharedManager] dataWithContentsOfURL:[NSURL fileURLWithPath:filePath]];
             [emailController addAttachmentData:documentData mimeType:mimeType fileName:filePath.lastPathComponent];
@@ -191,7 +220,7 @@
             [emailController setMessageBody:messageBody isHTML:YES];
             emailController.modalPresentationStyle = UIModalPresentationPageSheet;
             
-            [self.controller presentViewController:emailController animated:YES completion:nil];
+            [strongSelf.controller presentViewController:emailController animated:YES completion:nil];
         }
         else
         {
@@ -304,7 +333,7 @@
             NSURL *fileURL = [NSURL fileURLWithPath:filePath];
 
             // Define a print block
-            void (^innerPrintBlock)(UIWebView *webView) = ^(UIWebView *webView) {
+            void (^innerPrintBlock)(WKWebView *webView) = ^(WKWebView *webView) {
                 UIPrintInteractionController *printController = [UIPrintInteractionController sharedPrintController];
                 
                 UIPrintInfo *printInfo = [UIPrintInfo printInfo];
@@ -486,7 +515,7 @@
 {
     __block AlfrescoRequest *deleteRequest = nil;
     
-    void (^deleteBlock)() = ^void(){
+    void (^deleteBlock)(void) = ^void(){
         if ([self.controller respondsToSelector:@selector(displayProgressIndicator)])
         {
             [self.controller displayProgressIndicator];
@@ -560,7 +589,7 @@
 
 - (void)pressedDeleteLocalFileActionItem:(ActionCollectionItem *)actionItem documentPath:(NSString *)documentPath
 {
-    void (^deleteBlock)() = ^void(){
+    void (^deleteBlock)(void) = ^void(){
         NSString *mimetype = [Utility mimeTypeForFileExtension:documentPath.pathExtension];
         [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategoryDM
                                                           action:kAnalyticsEventActionDelete
@@ -759,7 +788,9 @@
 
 - (void)sessionRefreshed:(NSNotification *)notification
 {
-    self.session = notification.object;
+    id<AlfrescoSession> session = notification.object;
+    self.session = session;
+    [self setupServicesForSession:session];
 }
 
 - (void)addCompletionBlock:(DocumentPreviewManagerFileSavedBlock)completionBlock
@@ -890,6 +921,19 @@
 {
     NSDictionary *notificationObject = @{kAlfrescoNodeAddedOnServerParentFolderKey : self.node, kAlfrescoNodeAddedOnServerSubNodeKey : node, kAlfrescoNodeAddedOnServerContentLocationLocally : locationURL};
     [[NSNotificationCenter defaultCenter] postNotificationName:kAlfrescoNodeAddedOnServerNotification object:notificationObject];
+}
+
+#pragma mark - File Provider support
+- (void)informFavoritesEnumerator
+{
+    UserAccount *currentAccount = [[AccountManager sharedManager] selectedAccount];
+    NSFileProviderItemIdentifier favoriteFolderItemIdentifier = [AFPItemIdentifier itemIdentifierForSuffix:kFileProviderFavoritesFolderIdentifierSuffix andAccount:currentAccount];
+    [[NSFileProviderManager defaultManager] signalEnumeratorForContainerItemIdentifier:favoriteFolderItemIdentifier completionHandler:^(NSError * _Nullable error) {
+        if (error != NULL)
+        {
+            AlfrescoLogError(@"ERROR: Couldn't signal enumerator for changes %@", error);
+        }
+    }];
 }
 
 @end

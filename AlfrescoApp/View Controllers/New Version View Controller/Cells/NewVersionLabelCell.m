@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -29,7 +29,8 @@
     [super awakeFromNib];
 
     self.valueTextField.textColor = [UIColor textDimmedColor];
-    [self.valueTextField setValue:[UIColor textDimmedColor] forKeyPath:@"_placeholderLabel.textColor"];
+    self.valueTextField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:self.valueTextField.placeholder
+                                                                                attributes:@{NSForegroundColorAttributeName: [UIColor textDimmedColor]}];
 }
 
 #pragma mark - UITextFieldDelegate

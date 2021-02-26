@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -30,7 +30,7 @@ static NSInteger const kCloudSectionNumber = 0;
 static CGFloat const kAccountTypeTitleFontSize = 18.0f;
 static CGFloat const kAccountTypeCellRowHeight = 66.0f;
 
-@interface AccountTypeSelectionViewController () <AccountDetailsViewControllerDelegate>
+@interface AccountTypeSelectionViewController () <AccountFlowDelegate>
 
 @property (nonatomic, strong) UIBarButtonItem *cancelButton;
 
@@ -47,7 +47,7 @@ static CGFloat const kAccountTypeCellRowHeight = 66.0f;
     return self;
 }
 
-- (instancetype)initWithDelegate:(id<AccountTypeSelectionViewControllerDelegate>)delegate
+- (instancetype)initWithDelegate:(id<AccountFlowDelegate>)delegate
 {
     self = [self init];
     if (self)
@@ -121,50 +121,54 @@ static CGFloat const kAccountTypeCellRowHeight = 66.0f;
 {
     if (indexPath.section == kCloudSectionNumber)
     {
-        UserAccount *account = [[UserAccount alloc] initWithAccountType:UserAccountTypeCloud];
-        account.accountDescription = NSLocalizedString(@"accounttype.cloud", @"Alfresco in the Cloud");
-        
-        [[LoginManager sharedManager] authenticateCloudAccount:account networkId:nil navigationController:self.navigationController completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
-            if (successful)
-            {
-                [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategoryAccount
-                                                                  action:kAnalyticsEventActionCreate
-                                                                   label:kAnalyticsEventLabelCloud
-                                                                   value:@1];
-                
-                AccountManager *accountManager = [AccountManager sharedManager];
-                [[RealmSyncManager sharedManager] realmForAccount:account.accountIdentifier];
-                
-                if (accountManager.totalNumberOfAddedAccounts == 0)
+        __weak typeof(self) weakSelf = self;
+        [[AccountManager sharedManager] presentCloudTerminationAlertControllerOnViewController:self completionBlock:^{
+            __strong typeof(self) strongSelf = weakSelf;
+            UserAccount *account = [[UserAccount alloc] initWithAccountType:UserAccountTypeCloud];
+            account.accountDescription = NSLocalizedString(@"accounttype.cloud", @"Alfresco in the Cloud");
+            
+            [[LoginManager sharedManager] authenticateCloudAccount:account networkId:nil navigationController:strongSelf.navigationController completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
+                if (successful)
                 {
-                    [accountManager selectAccount:account selectNetwork:[account.accountNetworks firstObject] alfrescoSession:alfrescoSession];
-                }
-                
-                if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerWillDismiss:accountAdded:)])
-                {
-                    [self.delegate accountTypeSelectionViewControllerWillDismiss:self accountAdded:YES];
-                }
-                
-                [self dismissViewControllerAnimated:YES completion:^{
-                    if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerDidDismiss:accountAdded:)])
+                    [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategoryAccount
+                                                                      action:kAnalyticsEventActionCreate
+                                                                       label:kAnalyticsEventLabelCloud
+                                                                       value:@1];
+                    
+                    AccountManager *accountManager = [AccountManager sharedManager];
+                    [[RealmSyncManager sharedManager] realmForAccount:account.accountIdentifier];
+                    
+                    if (accountManager.totalNumberOfAddedAccounts == 0)
                     {
-                        [self.delegate accountTypeSelectionViewControllerDidDismiss:self accountAdded:YES];
+                        [accountManager selectAccount:account selectNetwork:[account.accountNetworks firstObject] alfrescoSession:alfrescoSession];
                     }
-                }];
-                
-                [accountManager addAccount:account];
-            }
-            else
-            {
-                UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"accountdetails.alert.save.title", @"Save Account")
-                                                                                         message:NSLocalizedString(@"accountdetails.alert.save.validationerror", @"Login Failed Message")
-                                                                                  preferredStyle:UIAlertControllerStyleAlert];
-                UIAlertAction *doneAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Done", @"Done")
-                                                                     style:UIAlertActionStyleCancel
-                                                                   handler:nil];
-                [alertController addAction:doneAction];
-                [self presentViewController:alertController animated:YES completion:nil];
-            }
+                    
+                    if ([strongSelf.delegate respondsToSelector:@selector(accountFlowWillDismiss:accountAdded:)])
+                    {
+                        [strongSelf.delegate accountFlowWillDismiss:strongSelf accountAdded:account];
+                    }
+                    
+                    [strongSelf dismissViewControllerAnimated:YES completion:^{
+                        if ([strongSelf.delegate respondsToSelector:@selector(accountFlowDidDismiss:accountAdded:)])
+                        {
+                            [strongSelf.delegate accountFlowDidDismiss:strongSelf accountAdded:account];
+                        }
+                    }];
+                    
+                    [accountManager addAccount:account];
+                }
+                else
+                {
+                    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"accountdetails.alert.save.title", @"Save Account")
+                                                                                             message:NSLocalizedString(@"accountdetails.alert.save.validationerror", @"Login Failed Message")
+                                                                                      preferredStyle:UIAlertControllerStyleAlert];
+                    UIAlertAction *doneAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Done", @"Done")
+                                                                         style:UIAlertActionStyleCancel
+                                                                       handler:nil];
+                    [alertController addAction:doneAction];
+                    [strongSelf presentViewController:alertController animated:YES completion:nil];
+                }
+            }];
         }];
     }
     else
@@ -173,6 +177,7 @@ static CGFloat const kAccountTypeCellRowHeight = 66.0f;
         accountDetailsViewController.delegate = self;
         [self.navigationController pushViewController:accountDetailsViewController animated:YES];
     }
+
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
@@ -196,52 +201,16 @@ static CGFloat const kAccountTypeCellRowHeight = 66.0f;
 
 - (void)cancel:(id)sender
 {
-    if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerWillDismiss:accountAdded:)])
+    if ([self.delegate respondsToSelector:@selector(accountFlowWillDismiss:accountAdded:)])
     {
-        [self.delegate accountTypeSelectionViewControllerWillDismiss:self accountAdded:NO];
+        [self.delegate accountFlowWillDismiss:self accountAdded:nil];
     }
     [self dismissViewControllerAnimated:YES completion:^{
-        if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerDidDismiss:accountAdded:)])
+        if ([self.delegate respondsToSelector:@selector(accountFlowDidDismiss:accountAdded:)])
         {
-            [self.delegate accountTypeSelectionViewControllerDidDismiss:self accountAdded:NO];
+            [self.delegate accountFlowDidDismiss:self accountAdded:nil];
         }
     }];
-}
-
-#pragma mark - AccountDetailsViewControllerDelegate Methods
-
-- (void)accountDetailsViewControllerWillDismiss:(AccountDetailsViewController *)controller
-{
-    if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerWillDismiss:accountAdded:)])
-    {
-        [self.delegate accountTypeSelectionViewControllerWillDismiss:self accountAdded:NO];
-    }
-}
-
-- (void)accountDetailsViewControllerDidDismiss:(AccountDetailsViewController *)controller
-{
-    if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerDidDismiss:accountAdded:)])
-    {
-        [self.delegate accountTypeSelectionViewControllerDidDismiss:self accountAdded:NO];
-    }
-}
-
-- (void)accountDetailsViewController:(AccountDetailsViewController *)controller willDismissAfterAddingAccount:(UserAccount *)account
-{
-    BOOL accountAdded = (account != nil);
-    if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerWillDismiss:accountAdded:)])
-    {
-        [self.delegate accountTypeSelectionViewControllerWillDismiss:self accountAdded:accountAdded];
-    }
-}
-
-- (void)accountDetailsViewController:(AccountDetailsViewController *)controller didDismissAfterAddingAccount:(UserAccount *)account
-{
-    BOOL accountAdded = (account != nil);
-    if ([self.delegate respondsToSelector:@selector(accountTypeSelectionViewControllerDidDismiss:accountAdded:)])
-    {
-        [self.delegate accountTypeSelectionViewControllerDidDismiss:self accountAdded:accountAdded];
-    }
 }
 
 @end

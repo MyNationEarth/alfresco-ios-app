@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -172,7 +172,6 @@
 "error.person.profile.no.profile.message" = "Impossibile trovare utente; %@";
 "error.person.profile.email.failed.title" = "Invio non riuscito";
 "error.person.profile.email.failed.message" = "Impossibile inviare e-mail. Riprova più tardi.";
-
 /**
  * Permissions
  */
@@ -921,3 +920,42 @@
  */
 "sync.info.skip" = "Ignora";
 "sync.info.next.laststep" = "Ok, ho capito.";
+
+/**
+ * Cloud Termination Alert
+ */
+"cloudtermination.message" = "my.alfresco.com verrà disattivato permanentemente dal 28 giugno 2019. Contattare l\'amministratore di sistema per le istruzioni per esportare i dati dal servizio.";
+
+/**
+* Multiple photos Upload Views
+*/
+"browser.actionsheet.takecontinuosphotos" = "Scatta foto multiple";
+"gallery.photos.selectAll" = "Seleziona tutto";
+"gallery.photos.takeMore" = "Scatta ancora";
+"gallery.photos.remainingPhotos" = "%d/%d rimanenti";
+"gallery.photos.uploadingPhotosComplete" = "Caricamento completato.";
+"gallery.camera.tomanyphotos" = "Puoi caricare un massimo di %d foto alla volta.";
+"gallery.camera.cancelCamera" = "Annullare? Le foto appena scattate andranno perse.";
+"gallery.photos.defaultPlaceholderName" = "Nome predefinito dei file";
+"gallery.photos.defaultName" = "Nome predefinito";
+"gallery.photos.infoNaming" = "Il nome indicato qui verrà anteposto a tutte le foto caricate";
+"gallery.photos.retryMode" = "Alcune foto non sono state caricate su Alfresco. Premi Riprova per non perderle.";
+"gallery.photos.upload.cellular.title" = "Usa i dati per caricare le foto multiple";
+"gallery.photos.upload.cellular.description" = "Passare alla connessione WI-FI per caricare queste foto?";
+"gallery.photos.uploadTitleScreen" = "Caricare foto";
+
+/**
+* AIMS Views
+*/
+"accountdetails.title.aims" = "Single Sign-On";
+"accountdetails.title.aimssettings" = "Impostazioni Single Sign-On";
+"accountdetails.fields.contentAdress" = "URL dei contenuti";
+"accountdetails.fields.realm" = "Area di autenticazione";
+"accountdetails.fields.clientID" = "ID client";
+"accountdetails.buttons.logout" = "Esci";
+"accountdetails.needHelp.title" = "Come accedere";
+"accountdetails.needHelp.text" = "Puoi immettere l’URL della tua istanza di Alfresco Content Services.\n\n • Ti verrà chiesto di immettere i tuoi nome utente e password per l’autenticazione.\n\n • Puoi anche autenticarti con il fornitore di identità (SSO) della tua organizzazione immettendo l’URL del tuo Identity Service. Nella successiva schermata dovrai fornire l’URL della tua istanza di Alfresco Content Services.\n\n • Se hai bisogno di assistenza contatta l’amministratore di Alfresco.";
+"accountpicker.title" = "Sessione scaduta";
+"accountpicker.subtitle" = "Non hai più effettuato l'accesso. Per continuare accedi nuovamente.";
+"accountpicker.info.other" = "Prova un altro account";
+"accountpicker.button.addaccount" = "Aggiungi account";

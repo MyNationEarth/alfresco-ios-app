@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -30,7 +30,7 @@ static CGFloat const kShakeAnimationDuration = 0.5f;
 {
     IBOutletCollection(BulletView) NSArray *_bullets;
     
-    void (^_completionBlock)();
+    void (^_completionBlock)(void);
 }
 
 - (instancetype)initWithCoder:(NSCoder *)aDecoder
@@ -50,7 +50,7 @@ static CGFloat const kShakeAnimationDuration = 0.5f;
     return self;
 }
 
-- (void)shakeWithCompletionBlock:(void (^)())completionBlock
+- (void)shakeWithCompletionBlock:(void (^)(void))completionBlock
 {
     _completionBlock = completionBlock;
     

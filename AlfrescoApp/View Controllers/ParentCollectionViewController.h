@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -18,7 +18,7 @@
 
 #import <UIKit/UIKit.h>
 #import "ErrorDescriptions.h"
-#import "MultiSelectActionsToolbar.h"
+#import "MultiSelectContainerView.h"
 #import "BaseLayoutAttributes.h"
 #import "BaseCollectionViewFlowLayout.h"
 #import "CollectionViewProtocols.h"
@@ -37,8 +37,9 @@ typedef NS_ENUM(NSUInteger, CollectionViewStyle)
 @interface ParentCollectionViewController : UIViewController < UICollectionViewDelegateFlowLayout, UIGestureRecognizerDelegate, CollectionViewCellAccessoryViewDelegate, DataSourceInformationProtocol, UIPopoverPresentationControllerDelegate, CollectionViewMultiSelectDelegate >
 
 // IBOutlets
-@property (nonatomic, weak) IBOutlet MultiSelectActionsToolbar *multiSelectToolbar;
-@property (nonatomic, weak) IBOutlet NSLayoutConstraint *multiSelectToolbarHeightConstraint;
+@property (nonatomic, weak) IBOutlet MultiSelectContainerView *multiSelectContainerView;
+@property (nonatomic, weak) IBOutlet NSLayoutConstraint *multiSelectContainerViewHeightConstraint;
+@property (weak, nonatomic) IBOutlet NSLayoutConstraint *multiSelectContainerViewBottomConstraint;
 @property (weak, nonatomic) IBOutlet UICollectionView *collectionView;
 
 @property (nonatomic, strong) id<AlfrescoSession> session;
@@ -80,5 +81,5 @@ typedef NS_ENUM(NSUInteger, CollectionViewStyle)
 - (BaseCollectionViewFlowLayout *)layoutForStyle:(CollectionViewStyle)style;
 
 - (void)updateEmptyView;
-
+- (RepositoryCollectionViewDataSource *)inUseDataSource;
 @end

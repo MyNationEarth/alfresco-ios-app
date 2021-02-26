@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -116,7 +116,7 @@
 #pragma mark - RealmSyncManagerSyncDisabledDelegate methods
 - (void)syncFeatureStatusChanged:(BOOL)isSyncOn
 {
-    [self.token stop];
+    [self.token invalidate];
     if(!isSyncOn)
     {
         [self setupDataSourceCollection:nil];

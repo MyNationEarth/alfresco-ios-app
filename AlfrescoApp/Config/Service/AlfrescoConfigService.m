@@ -1,6 +1,6 @@
 /*
  ******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile SDK.
  *
@@ -153,6 +153,20 @@
     return nil;
 }
 
+- (AlfrescoRequest *)retrieveViewConfigsWithIdentifiers:(NSArray *)identifiers
+                                       completionBlock:(AlfrescoViewConfigsCompletionBlock)completionBlock
+{
+    [self doesNotRecognizeSelector:_cmd];
+    return nil;
+}
+
+- (AlfrescoRequest *)retrieveViewConfigsWithIdentifiers:(NSArray *)identifiers
+                                                  scope:(AlfrescoConfigScope *)scope
+                                        completionBlock:(AlfrescoViewConfigsCompletionBlock)completionBlock
+{
+    [self doesNotRecognizeSelector:_cmd];
+    return nil;
+}
 
 - (AlfrescoRequest *)retrieveViewGroupConfigWithIdentifier:(NSString *)identifier
                                            completionBlock:(AlfrescoViewGroupConfigCompletionBlock)completionBlock

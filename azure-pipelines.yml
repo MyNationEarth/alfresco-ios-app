@@ -1,0 +1,120 @@
+trigger:
+  - master
+
+pr: none
+
+pool:
+  vmImage: 'macos-latest'
+
+variables:
+  - group: acs-ios
+  - group: git-credentials
+  - group: source-clear-credentials
+  - group: ios-signing
+  - name: configuration
+    value: 'Release'
+  - name: sdk
+    value: 'iphoneos'
+
+steps:
+- checkout: self
+  submodules: true
+
+- task: CmdLine@2
+  displayName: Adding Alfresco private podspec repository
+  inputs:
+    script: |
+      pod repo add AlfrescoPodspec https://$(gitUser):$(gitPAT)@github.com/Alfresco/alfresco-private-podspecs-ios-sdk.git
+      
+- task: CmdLine@2
+  displayName: Installing pods
+  inputs:
+    script: |
+      pod repo update
+      pod install
+
+- task: CmdLine@2
+  displayName: Variable substitution for GoogleAnalytics
+  inputs:
+    script: 'plutil -replace API_KEY -string $(GA_API_KEY) GoogleService-Info.plist'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/AlfrescoApp/Supporting Files/'
+
+- task: InstallAppleCertificate@2
+  inputs:
+   certSecureFile: '$(p12FileName)'
+   certPwd: '$(p12Password)'
+   keychain: 'temp'
+   deleteCert: true 
+  
+- task: InstallAppleProvisioningProfile@1
+  inputs:
+   provisioningProfileLocation: 'secureFiles'
+   provProfileSecureFile: '$(csReleaseProvisioningProfile)'
+   removeProfile: true 
+
+- task: Xcode@5
+  displayName: 'Generate Content Services IPA'
+  inputs:
+    actions: 'build'
+    scheme: 'AlfrescoApp'
+    sdk: '$(sdk)'
+    configuration: '$(configuration)'
+    xcWorkspacePath: '**/AlfrescoApp.xcworkspace'
+    xcodeVersion: 'default'
+    packageApp: true
+    signingOption: 'manual'
+    signingIdentity: '$(APPLE_CERTIFICATE_SIGNING_IDENTITY)'
+    provisioningProfileUuid: '$(APPLE_PROV_PROFILE_UUID)'
+
+- task: Xcode@5
+  displayName: 'Archive Content Services App'
+  inputs:
+    actions: 'build archive'
+    sdk: '$(sdk)'
+    scheme: 'AlfrescoApp'
+    configuration: '$(configuration)'
+    xcWorkspacePath: '**/AlfrescoApp.xcworkspace'
+    useXcpretty: 'false'
+    args: '-archivePath $(agent.buildDirectory)/AlfrescoApp'
+
+- task: ArchiveFiles@2
+  displayName: 'Package .xcarchive into a zip file'
+  inputs:
+    rootFolderOrFile: '$(agent.buildDirectory)/AlfrescoApp.xcarchive/'
+    archiveFile: '$(build.artifactStagingDirectory)/AlfrescoApp.xcarchive.zip'
+
+- task: CopyFiles@2
+  inputs:
+    contents: '**/*.ipa'
+    targetFolder: '$(build.artifactStagingDirectory)'
+    overWrite: true
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(build.artifactStagingDirectory)/AlfrescoApp.xcarchive.zip'
+    artifactName: 'xcarchive-files'
+    artifactType: 'container'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: '$(build.artifactStagingDirectory)' 
+    artifactName: 'ACS-iOS' 
+    publishLocation: 'Container'
+
+- task: CmdLine@2
+  inputs:
+    script: 'curl -sSL https://download.sourceclear.com/ci.sh | sh'
+  displayName: 'Performing Source Clear checks'
+  env:
+    SRCCLR_API_TOKEN: $(source_clear_token)
+
+- task: AppStoreRelease@1
+  inputs:
+    serviceEndpoint: 'AppStore'
+    appIdentifier: 'com.alfresco.mobile'
+    appType: 'iOS'
+    ipaPath: '**/*.ipa'
+    releaseTrack: 'TestFlight'
+    shouldSkipWaitingForProcessing: true
+    teamId: 'W8N95J537P'
+    teamName: 'Alfresco Software, Inc.'

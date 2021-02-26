@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -24,6 +24,7 @@
 #import "UniversalDevice.h"
 #import "LocationManager.h"
 #import "RealmSyncManager.h"
+#import "AccountManager.h"
 
 NS_ENUM(NSUInteger, UploadFormCellTypes)
 {
@@ -935,7 +936,7 @@ static NSString * const kAudioFileName = @"audio.m4a";
 
 - (void)closeUploadForm:(id)sender
 {
-    void (^cancelBlock)() = ^(){
+    void (^cancelBlock)(void) = ^(){
         [self dismissViewControllerAnimated:YES completion:^{
             if ([self.delegate respondsToSelector:@selector(didCancelUpload)])
             {
@@ -1109,6 +1110,16 @@ static NSString * const kAudioFileName = @"audio.m4a";
 - (void)audioRecorderEncodeErrorDidOccur:(AVAudioRecorder *)recorder error:(NSError *)error
 {
     AlfrescoLogError(@"AVAudioRecorder decoder error: %@", [ErrorDescriptions descriptionForError:error]);
+}
+
+#pragma mark - Session Received
+
+- (void)sessionReceived:(NSNotification *)notification
+{
+    id<AlfrescoSession> session = notification.object;
+    self.session = session;
+    self.documentService = [[AlfrescoDocumentFolderService alloc] initWithSession:self.session];
+    self.tagService = [[AlfrescoTaggingService alloc] initWithSession:self.session];
 }
 
 @end

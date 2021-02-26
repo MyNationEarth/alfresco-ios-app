@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -18,6 +18,7 @@
 
 #import <Foundation/Foundation.h>
 #import "SharedConstants.h"
+#import "UserAccount.h"
 
 typedef NS_ENUM(NSInteger, InAppDocumentLocation)
 {
@@ -57,8 +58,17 @@ typedef NS_ENUM(NSUInteger, SitesListViewFilter)
     SitesListViewFilterAllSites
 };
 
+typedef NS_ENUM(NSUInteger, AvailableAuthenticationType) {
+    AvailableAuthenticationTypeUndefined = -1,
+    AvailableAuthenticationTypeBasic = 0,
+    AvailableAuthenticationTypeAIMS
+};
+
 typedef void (^ImageCompletionBlock)(UIImage *image, NSError *error);
 typedef void (^LoginAuthenticationCompletionBlock)(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error);
+typedef void (^LoginAIMSCompletionBlock)(UserAccount *account, NSError *error);
+typedef void (^LogoutAIMSCompletionBlock)(BOOL successful, NSError *error);
+typedef void (^AvailableAuthenticationTypeCompletionBlock)(AvailableAuthenticationType authType, NSError *error);
 
 extern NSTimeInterval const kRateLimitForRequestsOnCloud;
 
@@ -109,6 +119,13 @@ extern NSString * const kSearchTypeUsers;
 extern NSString * const kHasCoreDataMigrationOccurred;
 extern NSString * const kWasSyncInfoPanelShown;
 extern NSString * const kVersionOfLastRun;
+extern NSString * const kCloudTerminationAlertShownKey;
+extern NSString * const kHasAccountMigrationOccured;
+extern NSString * const kPersistenceStackSessionParameter;
+extern NSString * const kPersistenceStackCredentialParameter;
+
+// errors
+extern int const kAFALoginSSOViewModelCancelErrorCode;
 
 // Settings Bundle Keys
 extern NSString * const kSettingsBundlePreferenceAppVersionKey;
@@ -131,6 +148,7 @@ extern NSString * const kAlfrescoDocumentUpdatedLocallyNotification;
 extern NSString * const kAlfrescoDocumentDeletedOnServerNotification;
 extern NSString * const kAlfrescoNodeAddedOnServerNotification;
 extern NSString * const kAlfrescoEnableMainMenuAutoItemSelection;
+extern NSString * const kAlfrescoShowAccountPickerNotification;
 // parameter keys used in the dictionary of notification object
 extern NSString * const kAlfrescoDocumentUpdatedFromDocumentParameterKey;
 extern NSString * const kAlfrescoDocumentUpdatedFilenameParameterKey;
@@ -153,6 +171,11 @@ extern NSString * const kAlfrescoAccountUpdatedNotification;
 extern NSString * const kAlfrescoAccountsListEmptyNotification;
 extern NSString * const kAlfrescoFirstPaidAccountAddedNotification;
 extern NSString * const kAlfrescoLastPaidAccountRemovedNotification;
+extern NSString * const kAlfrescoDefaultAIMSClientIDString;
+extern NSString * const kAlfrescoDefaultAIMSRealmString;
+extern NSString * const kAlfrescoDefaultAIMSRedirectURI;
+extern NSInteger const kAlfrescoDefaultAIMSAccessTokenRefreshTimeBuffer;
+
 
 // Application policy constants
 extern NSString * const kApplicationPolicySettings;
@@ -176,10 +199,6 @@ extern NSString * const kFavoritesListUpdatedNotification;
 extern NSString * const kSyncProgressViewVisiblityChangeNotification;
 extern NSString * const kTopLevelSyncDidAddNodeNotification;
 extern NSString * const kTopLevelSyncDidRemoveNodeNotification;
-
-// Realm sync exceptions
-extern NSString * const kFailedToCreateRealmDatabase;
-extern NSString * const kRealmSyncErrorKey;
 
 // Download Status Notifications
 extern NSString * const kDocumentPreviewManagerWillStartDownloadNotification;
@@ -313,73 +332,6 @@ extern NSString * const kAlfrescoMainMenuItemSettingsIdentifier;
 extern NSString * const kAlfrescoMainMenuItemHelpIdentifier;
 /// Features
 extern NSString * const kAlfrescoConfigFeatureTypeAnalytics;
-/// View Types
-extern NSString * const kAlfrescoConfigViewTypeActivities;
-extern NSString * const kAlfrescoConfigViewTypeRepository;
-extern NSString * const kAlfrescoConfigViewTypeSiteBrowser;
-extern NSString * const kAlfrescoConfigViewTypeTasks;
-extern NSString * const kAlfrescoConfigViewTypeFavourites;
-extern NSString * const kAlfrescoConfigViewTypeSync;
-extern NSString * const kAlfrescoConfigViewTypeLocal;
-extern NSString * const kAlfrescoConfigViewTypePersonProfile;
-extern NSString * const kAlfrescoConfigViewTypePeople;
-extern NSString * const kAlfrescoConfigViewTypeGallery;
-extern NSString * const kAlfrescoConfigViewTypeDocumentDetails;
-extern NSString * const kAlfrescoConfigViewTypeSite;
-extern NSString * const kAlfrescoConfigViewTypeSearchRepository;
-extern NSString * const kAlfrescoConfigViewTypeSearch;
-extern NSString * const kAlfrescoConfigViewTypeSearchAdvanced;
-// View Parameter Keys
-extern NSString * const kAlfrescoConfigViewParameterSiteShortNameKey;
-extern NSString * const kAlfrescoConfigViewParameterPathKey;
-extern NSString * const kAlfrescoConfigViewParameterNodeRefKey;
-extern NSString * const kAlfrescoConfigViewParameterShowKey;
-extern NSString * const kAlfrescoConfigViewParameterTypeKey;
-extern NSString * const kAlfrescoConfigViewParameterKeywordsKey;
-extern NSString * const kAlfrescoConfigViewParameterIsExactKey;
-extern NSString * const kAlfrescoConfigViewParameterFullTextKey;
-extern NSString * const kAlfrescoConfigViewParameterSearchFolderOnlyKey;
-extern NSString * const kAlfrescoConfigViewParameterStatementKey;
-extern NSString * const kAlfrescoConfigViewParameterUsernameKey;
-extern NSString * const kAlfrescoConfigViewParameterFolderTypeKey;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersKey;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersStatusKey;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersDueKey;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersPriorityKey;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersAssigneeKey;
-extern NSString * const kAlfrescoConfigViewParameterFavoritesFiltersKey;
-extern NSString * const kAlfrescoConfigViewParameterFavoritesFiltersModeKey;
-extern NSString * const kAlfrescoConfigViewParameterPaginationKey;
-extern NSString * const kAlfrescoConfigViewParameterPaginationMaxItemsKey;
-extern NSString * const kAlfrescoConfigViewParameterPaginationSkipCountKey;
-
-// View Parameter Values
-extern NSString * const kAlfrescoConfigViewParameterMySitesValue;
-extern NSString * const kAlfrescoConfigViewParameterFavouriteSitesValue;
-extern NSString * const kAlfrescoConfigViewParameterAllSitesValue;
-extern NSString * const kAlfrescoConfigViewParameterAdvancedSearchPerson;
-extern NSString * const kAlfrescoConfigViewParameterAdvancedSearchDocument;
-extern NSString * const kAlfrescoConfigViewParameterAdvancedSearchFolder;
-extern NSString * const kAlfrescoConfigViewParameterFolderTypeMyFiles;
-extern NSString * const kAlfrescoConfigViewParameterFolderTypeShared;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersStatusAny;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersStatusActive;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersStatusComplete;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersDueToday;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersDueTomorrow;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersDueWeek;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersDueOverdue;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersDueNone;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersPriorityLow;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersPriorityMedium;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersPriorityHigh;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersAssigneeMe;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersAssigneeUnassigned;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersAssigneeAll;
-extern NSString * const kAlfrescoConfigViewParameterTaskFiltersAssigneeNone;
-extern NSString * const kAlfrescoConfigViewParameterFavoritesFiltersAll;
-extern NSString * const kAlfrescoConfigViewParameterFavoritesFiltersFolders;
-extern NSString * const kAlfrescoConfigViewParameterFavoritesFiltersFiles;
 
 // App Configuration
 //// Notifications

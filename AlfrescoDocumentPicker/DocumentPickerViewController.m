@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -99,7 +99,9 @@ static NSString * const kAccountsListIdentifier = @"AccountListNew";
         self.appResetedView.hidden = YES;
         
         NSError *error;
-        NSString *pin = [KeychainUtils retrieveItemForKey:kPinKey error:&error];
+        NSString *pin = [KeychainUtils retrieveItemForKey:kPinKey
+                                                  inGroup:kSharedAppGroupIdentifier
+                                                    error:&error];
         
         BOOL isPasscodeSet = (pin != nil);
         
@@ -258,7 +260,7 @@ static NSString * const kAccountsListIdentifier = @"AccountListNew";
     return scopeItems;
 }
 
-- (void)displayScopeViewControllerFromController:(UIViewController *)controller forAccount:(id<AKUserAccount>)account session:(id<AlfrescoSession>)session completionBlock:(void (^)())completionBlock
+- (void)displayScopeViewControllerFromController:(UIViewController *)controller forAccount:(id<AKUserAccount>)account session:(id<AlfrescoSession>)session completionBlock:(void (^)(void))completionBlock
 {
     self.account = account;
     self.session = session;
@@ -887,20 +889,15 @@ static NSString * const kAccountsListIdentifier = @"AccountListNew";
 
 + (void)trackEventWithAction:(NSString *)action label:(NSString *)label
 {
-    GAIDictionaryBuilder *builder = [GAIDictionaryBuilder createEventWithCategory:kAnalyticsEventCategoryDocumentProvider
-                                                                           action:action
-                                                                            label:label
-                                                                            value:@1];
-    id<GAITracker> tracker = [[GAI sharedInstance] trackerWithTrackingId:GA_API_KEY];
-    NSDictionary *dictionary = [builder build];
-    [tracker send:dictionary];
+    [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategoryDocumentProvider
+                                                         action:action
+                                                          label:label
+                                                          value:@1];
 }
 
 + (void)trackScreenWithName:(NSString *)screenName
 {
-    id<GAITracker> tracker = [[GAI sharedInstance] defaultTracker];
-    [tracker set:kGAIScreenName value:screenName];
-    [tracker send:[[GAIDictionaryBuilder createScreenView] build]];
+    [[AnalyticsManager sharedManager] trackScreenWithName:screenName];
 }
 
 // This method is a clone of Utility class's method mimeTypeForFileExtension:

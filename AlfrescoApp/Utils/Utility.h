@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -86,11 +86,13 @@ NSDictionary *dictionaryOfVariableBindingsWithArray(NSArray *views);
 + (NSString *)displayNameForProcessDefinition:(NSString *)task;
 + (UIImage *)cropImageIntoSquare:(UIImage *)originalImage;
 + (void)createBorderedButton:(UIButton *)button label:(NSString *)label color:(UIColor *)color;
-+ (NSString *)nodeRefWithoutVersionID:(NSString *)originalIdentifier;
 + (NSArray *)localisationsThatRequireTwoRowsInActionView;
 + (NSString *)helpURLLocaleIdentifierForAppLocale;
 + (NSString *)helpURLLocaleIdentifierForLocale:(NSString *)locale;
 - (NSString *)accountIdentifierForAccount:(UserAccount *)userAccount;
 + (void)showLocalizedAlertWithTitle:(NSString *)title message:(NSString *)message;
-
++ (NSData *)dataFromImage:(UIImage *)image metadata:(NSDictionary *)metadata mimetype:(NSString *)mimetype;
++ (NSDictionary *)metadataByAddingGPSToMetadata:(NSDictionary *)metadata;
++ (NSDictionary *)metadataByAddingOrientation:(NSInteger)orientation toMetadata:(NSDictionary *)metadata;
++ (NSDateFormatter *)dateFormatter;
 @end

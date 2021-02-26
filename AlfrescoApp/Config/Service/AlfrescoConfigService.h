@@ -1,6 +1,6 @@
 /*
  ******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile SDK.
  *
@@ -114,6 +114,13 @@
 - (AlfrescoRequest *)retrieveViewConfigWithIdentifier:(NSString *)identifier
                                                 scope:(AlfrescoConfigScope *)scope
                                       completionBlock:(AlfrescoViewConfigCompletionBlock)completionBlock;
+
+- (AlfrescoRequest *)retrieveViewConfigsWithIdentifiers:(NSArray *)identifiers
+                                      completionBlock:(AlfrescoViewConfigsCompletionBlock)completionBlock;
+
+- (AlfrescoRequest *)retrieveViewConfigsWithIdentifiers:(NSArray *)identifiers
+                                                  scope:(AlfrescoConfigScope *)scope
+                                        completionBlock:(AlfrescoViewConfigsCompletionBlock)completionBlock;
 
 
 - (AlfrescoRequest *)retrieveViewGroupConfigWithIdentifier:(NSString *)identifier

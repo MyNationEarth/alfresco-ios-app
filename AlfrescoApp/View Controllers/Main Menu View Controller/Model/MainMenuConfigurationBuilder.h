@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -27,5 +27,6 @@
 @property (nonatomic, strong) NSDictionary *managedAccountConfiguration;
 
 - (instancetype)initWithAccount:(UserAccount *)account session:(id<AlfrescoSession>)session;
+- (void)viewConfigCollectionForMenuItemCollection:(NSArray *)menuItemsCollection completionBlock:(void (^)(NSArray *configs, NSError *error))completionBlock;
 
 @end

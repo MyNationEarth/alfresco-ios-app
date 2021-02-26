@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -25,16 +25,15 @@
 @property (nonatomic, strong) AlfrescoFileManager *fileManager;
 @property (nonatomic, strong) AlfrescoDocumentFolderService *documentFolderService;
 @property (nonatomic, strong) id<AlfrescoSession> alfrescoSession;
-@property (atomic, assign) NSInteger nodeChildrenRequestsCount;
+@property (atomic, assign) NSInteger nodeRequestsInProgressCount;
 @property (nonatomic, strong) NSMutableDictionary *syncQueues;
 @property (nonatomic, strong) NSMutableDictionary *syncNodesInfo;
 @property (nonatomic, strong) NSDictionary *syncObstacles;
-@property (nonatomic, strong) RealmManager *realmManager;
 @property (nonatomic, strong) NSMutableDictionary *permissions;
 @property (nonatomic, strong) NSString *selectedAccountSyncIdentifier;
 
-@property (nonatomic, strong) NSMutableArray *nodesToDownload;
-@property (nonatomic, strong) NSMutableArray *nodesToUpload;
+@property (nonatomic, strong) NSMutableDictionary *nodesToDownload;
+@property (nonatomic, strong) NSMutableDictionary *nodesToUpload;
 
 @property (nonatomic) BOOL disableSyncInProgress;
 @property (nonatomic) BOOL lastConnectivityFlag;
@@ -42,7 +41,5 @@
 @property (atomic, strong) NSMutableDictionary *unsyncCompletionBlocks;
 
 - (SyncOperationQueue *)currentOperationQueue;
-
-- (NSString *)syncContentDirectoryPathForAccountWithId:(NSString *)accountId;
 
 @end

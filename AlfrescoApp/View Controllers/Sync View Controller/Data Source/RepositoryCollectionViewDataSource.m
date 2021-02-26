@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -23,6 +23,7 @@
 #import "ThumbnailManager.h"
 #import "FavouriteManager.h"
 #import "RealmSyncManager.h"
+#import "AccountManager.h"
 
 @implementation RepositoryCollectionViewDataSource
 
@@ -36,6 +37,7 @@
     }
     
     self.defaultListingContext = [[AlfrescoListingContext alloc] initWithMaxItems:kMaxItemsPerListingRetrieve skipCount:0];
+    self.shouldAllowLayoutChange = YES;
     
     return self;
 }
@@ -135,7 +137,7 @@
     [node retrieveNodePermissionsWithSession:self.session withCompletionBlock:^(AlfrescoPermissions *permissions, NSError *error) {
         if (permissions)
         {
-            [self.nodesPermissions setValue:permissions forKey:[node syncIdentifier]];
+            [self.nodesPermissions setValue:permissions forKey:[[RealmSyncCore sharedSyncCore] syncIdentifierForNode:node]];
             [[RealmManager sharedManager] savePermissions:permissions forNode:node];
         }
     }];
@@ -170,67 +172,72 @@
         LoadingCollectionViewCell *cell = (LoadingCollectionViewCell *)[collectionView dequeueReusableCellWithReuseIdentifier:[LoadingCollectionViewCell cellIdentifier] forIndexPath:indexPath];
         return cell;
     }
-    
-    FileFolderCollectionViewCell *nodeCell = [collectionView dequeueReusableCellWithReuseIdentifier:[FileFolderCollectionViewCell cellIdentifier] forIndexPath:indexPath];
-    AlfrescoNode *node = self.dataSourceCollection[indexPath.item];
-    RealmSyncManager *syncManager = [RealmSyncManager sharedManager];
-    
-    SyncNodeStatus *nodeStatus = [syncManager syncStatusForNodeWithId:node.identifier];
-    [nodeCell updateCellInfoWithNode:node nodeStatus:nodeStatus];
-    [nodeCell registerForNotifications];
-    
-    [self updateFavoriteStatusIconForNodeCell:nodeCell node:node];
-    
-    BaseCollectionViewFlowLayout *currentLayout = [self.delegate currentSelectedLayout];
-    
-    if (node.isFolder)
+    else
     {
-        if(currentLayout.shouldShowSmallThumbnail)
+        FileFolderCollectionViewCell *nodeCell = [collectionView dequeueReusableCellWithReuseIdentifier:[FileFolderCollectionViewCell cellIdentifier] forIndexPath:indexPath];
+        if(indexPath.item < self.dataSourceCollection.count)
         {
-            [nodeCell.image setImage:smallImageForType(@"folder") withFade:NO];
-        }
-        else
-        {
-            [nodeCell.image setImage:largeImageForType(@"folder") withFade:NO];
-        }
-    }
-    else if (node.isDocument)
-    {
-        AlfrescoDocument *document = (AlfrescoDocument *)node;
-        ThumbnailManager *thumbnailManager = [ThumbnailManager sharedManager];
-        UIImage *thumbnail = [thumbnailManager thumbnailForDocument:document renditionType:kRenditionImageDocLib];
-        
-        if (thumbnail)
-        {
-            [nodeCell.image setImage:thumbnail withFade:NO];
-        }
-        else
-        {
-            if(currentLayout.shouldShowSmallThumbnail)
+            AlfrescoNode *node = self.dataSourceCollection[indexPath.item];
+            RealmSyncManager *syncManager = [RealmSyncManager sharedManager];
+            
+            SyncNodeStatus *nodeStatus = [syncManager syncStatusForNodeWithId:node.identifier];
+            [nodeCell updateCellInfoWithNode:node nodeStatus:nodeStatus];
+            [nodeCell registerForNotifications];
+            
+            [self updateFavoriteStatusIconForNodeCell:nodeCell node:node];
+            
+            BaseCollectionViewFlowLayout *currentLayout = [self.delegate currentSelectedLayout];
+            
+            if (node.isFolder)
             {
-                [nodeCell.image setImage:smallImageForType([document.name pathExtension]) withFade:NO];
-            }
-            else
-            {
-                [nodeCell.image setImage:largeImageForType([document.name pathExtension]) withFade:NO];
-            }
-            [thumbnailManager retrieveImageForDocument:document renditionType:kRenditionImageDocLib session:self.session completionBlock:^(UIImage *image, NSError *error) {
-                if (image)
+                if(currentLayout.shouldShowSmallThumbnail)
                 {
-                    // MOBILE-2991, check the tableView and indexPath objects are still valid as there is a chance
-                    // by the time completion block is called the table view could have been unloaded.
-                    if (collectionView && indexPath)
-                    {
-                        FileFolderCollectionViewCell *updateCell = (FileFolderCollectionViewCell *)[collectionView cellForItemAtIndexPath:indexPath];
-                        [updateCell.image setImage:image withFade:YES];
-                    }
+                    [nodeCell.image setImage:smallImageForType(@"folder") withFade:NO];
                 }
-            }];
+                else
+                {
+                    [nodeCell.image setImage:largeImageForType(@"folder") withFade:NO];
+                }
+            }
+            else if (node.isDocument)
+            {
+                AlfrescoDocument *document = (AlfrescoDocument *)node;
+                ThumbnailManager *thumbnailManager = [ThumbnailManager sharedManager];
+                UIImage *thumbnail = [thumbnailManager thumbnailForDocument:document renditionType:kRenditionImageDocLib];
+                
+                if (thumbnail)
+                {
+                    [nodeCell.image setImage:thumbnail withFade:NO];
+                }
+                else
+                {
+                    if(currentLayout.shouldShowSmallThumbnail)
+                    {
+                        [nodeCell.image setImage:smallImageForType([document.name pathExtension]) withFade:NO];
+                    }
+                    else
+                    {
+                        [nodeCell.image setImage:largeImageForType([document.name pathExtension]) withFade:NO];
+                    }
+                    [thumbnailManager retrieveImageForDocument:document renditionType:kRenditionImageDocLib session:self.session completionBlock:^(UIImage *image, NSError *error) {
+                        if (image)
+                        {
+                            // MOBILE-2991, check the tableView and indexPath objects are still valid as there is a chance
+                            // by the time completion block is called the table view could have been unloaded.
+                            if (collectionView && indexPath)
+                            {
+                                FileFolderCollectionViewCell *updateCell = (FileFolderCollectionViewCell *)[collectionView cellForItemAtIndexPath:indexPath];
+                                [updateCell.image setImage:image withFade:YES];
+                            }
+                        }
+                    }];
+                }
+            }
+            
+            nodeCell.accessoryViewDelegate = [self.delegate cellAccessoryViewDelegate];
         }
+        return nodeCell;
     }
-    
-    nodeCell.accessoryViewDelegate = [self.delegate cellAccessoryViewDelegate];
-    return nodeCell;
 }
 
 - (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView viewForSupplementaryElementOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath
@@ -239,20 +246,19 @@
     if (kind == UICollectionElementKindSectionHeader)
     {
         SearchCollectionSectionHeader *headerView = (SearchCollectionSectionHeader *)[collectionView dequeueReusableSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@"SectionHeader" forIndexPath:indexPath];
-        
+
         if(!headerView.hasAddedSearchBar)
         {
             UISearchBar *searchBar = [self.delegate searchBarForSupplimentaryHeaderView];
             headerView.searchBar = searchBar;
             [headerView addSubview:searchBar];
             [searchBar sizeToFit];
-            BaseCollectionViewFlowLayout *collectionViewLayout = (BaseCollectionViewFlowLayout *)collectionView.collectionViewLayout;
-            searchBar.frame = CGRectMake(searchBar.frame.origin.x, searchBar.frame.origin.y, searchBar.frame.size.width, collectionViewLayout.headerReferenceSize.height);
+            headerView.hasAddedSearchBar = YES;
         }
-        
+
         reusableview = headerView;
     }
-    
+
     return reusableview;
 }
 
@@ -393,7 +399,7 @@
     AlfrescoPermissions *permissions = nil;
     if(node)
     {
-        NSString *nodeIdentifier = [node syncIdentifier];
+        NSString *nodeIdentifier = [[RealmSyncCore sharedSyncCore] syncIdentifierForNode:node];
         permissions = self.nodesPermissions[nodeIdentifier];
     }
     
@@ -415,7 +421,7 @@
     NSMutableArray *newNodeIndexPaths = [NSMutableArray arrayWithCapacity:alfrescoNodes.count];
     for (AlfrescoNode *node in alfrescoNodes)
     {
-        AlfrescoPermissions *nodePermissions = self.nodesPermissions[[node syncIdentifier]];
+        AlfrescoPermissions *nodePermissions = self.nodesPermissions[[[RealmSyncCore sharedSyncCore] syncIdentifierForNode:node]];
         if(!nodePermissions)
         {
             [self retrievePermissionsForNode:node];
@@ -449,7 +455,7 @@
 }
 
 #pragma mark - SwipeToDeleteDelegate methods
-- (void)collectionView:(UICollectionView *)collectionView didSwipeToDeleteItemAtIndex:(NSIndexPath *)indexPath completionBlock:(void (^)())completionBlock
+- (void)collectionView:(UICollectionView *)collectionView didSwipeToDeleteItemAtIndex:(NSIndexPath *)indexPath completionBlock:(void (^)(void))completionBlock
 {
     AlfrescoNode *nodeToDelete = self.dataSourceCollection[indexPath.item];
     
@@ -642,7 +648,9 @@
     if ([parentFolder isEqual:self.parentNode])
     {
         AlfrescoNode *subnode = [foldersDictionary objectForKey:kAlfrescoNodeAddedOnServerSubNodeKey];
+        [self retrievePermissionsForNode:subnode];
         [self addAlfrescoNodes:@[subnode]];
+        [[RealmSyncManager sharedManager] didUploadNode:subnode fromPath:nil toFolder:(AlfrescoFolder *)self.parentNode];
     }
 }
 
@@ -676,6 +684,11 @@
 - (void)sessionRefreshed:(NSNotification *)notification
 {
     self.session = notification.object;
+}
+
+- (NSString*)getSearchType
+{
+    return kAlfrescoModelTypeContent;
 }
 
 @end

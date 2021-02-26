@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -236,6 +236,7 @@ static BOOL sFileProtectionEnabled = NO;
 - (BOOL)enumerateThroughDirectory:(NSString *)directory includingSubDirectories:(BOOL)includeSubDirectories withBlock:(void (^)(NSString *fullFilePath))block error:(NSError **)error
 {
     __block BOOL completedWithoutError = YES;
+    __block NSError *enumerationError;
     
     NSDirectoryEnumerationOptions options;
     if (!includeSubDirectories)
@@ -255,14 +256,19 @@ static BOOL sFileProtectionEnabled = NO;
                                                                            options:options
                                                                       errorHandler:^BOOL(NSURL *url, NSError *fileError) {
                                                                           AlfrescoLogDebug(@"Error retrieving contents of the URL: %@ with the error: %@", [url absoluteString], [fileError localizedDescription]);
-                                                                          if (error)
+                                                                          if (fileError)
                                                                           {
-                                                                              *error = fileError;
+                                                                              enumerationError = fileError;
                                                                           }
+                                                                          
                                                                           completedWithoutError = NO;
                                                                           // continue enumeration
                                                                           return YES;
                                                                       }];
+    if (enumerationError)
+    {
+        *error = enumerationError;
+    }
     
     for (NSURL *fileURL in folderContents)
     {

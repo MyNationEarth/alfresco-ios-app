@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -18,8 +18,6 @@
  
 #import "ContainerViewController.h"
 #import "FullScreenAnimationController.h"
-
-static NSUInteger const kStatusBarViewHeight = 20.0f;
 
 @interface ContainerViewController ()
 
@@ -45,12 +43,6 @@ static NSUInteger const kStatusBarViewHeight = 20.0f;
     CGRect screenFrame = [[UIScreen mainScreen] bounds];
     UIView *view = [[UIView alloc] initWithFrame:screenFrame];
     
-    UIView *statusBarBackgroundView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, screenFrame.size.width, kStatusBarViewHeight)];
-    statusBarBackgroundView.backgroundColor = [UIColor blackColor];
-    statusBarBackgroundView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    [view addSubview:statusBarBackgroundView];
-    self.statusBarBackgroundView = statusBarBackgroundView;
-    
     self.view = view;
 }
 
@@ -62,8 +54,12 @@ static NSUInteger const kStatusBarViewHeight = 20.0f;
     [self addChildViewController:self.rootViewController];
     [self.view addSubview:self.rootViewController.view];
     [self.rootViewController didMoveToParentViewController:self];
-    
-    [self.view bringSubviewToFront:self.statusBarBackgroundView];
+    [self setNeedsStatusBarAppearanceUpdate];
+}
+
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    return UIStatusBarStyleDefault;
 }
 
 @end

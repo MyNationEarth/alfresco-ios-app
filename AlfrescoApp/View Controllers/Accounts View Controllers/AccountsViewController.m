@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -28,6 +28,9 @@
 #import "RealmSyncManager.h"
 #import "SecurityManager.h"
 #import "AccountDetailsViewController.h"
+#import "NSMutableAttributedString+URLSupport.h"
+#import "AlfrescoApp-Swift.h"
+
 
 static NSInteger const kAccountSelectionButtonWidth = 32;
 static NSInteger const kAccountSelectionButtongHeight = 32;
@@ -40,7 +43,7 @@ static CGFloat const kDefaultFontSize = 18.0f;
 static CGFloat const kAccountCellHeight = 60.0f;
 static CGFloat const kAccountNetworkCellHeight = 50.0f;
 
-@interface AccountsViewController ()
+@interface AccountsViewController () <AccountPickerDelegate>
 @property (nonatomic, assign) NSInteger expandedSection;
 @property (nonatomic, strong) NSMutableDictionary *configuration;
 @property (nonatomic, assign) BOOL canAddAccounts;
@@ -78,6 +81,24 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
     return self;
 }
 
+- (void)showPickerAccountsWithCurrentAccount:(UserAccount*)currentUser onViewController:(UIViewController*)viewController
+{
+    [[LoginManager sharedManager] cancelActiveSessionRefreshTasks];
+    AccountPickerViewController *accountPickerViewContoller = [[AccountPickerViewController alloc] initWithAccount:currentUser withDelegate:self];
+    NavigationViewController *navController = [[NavigationViewController alloc] initWithRootViewController:accountPickerViewContoller];
+    navController.modalPresentationStyle = UIModalPresentationFormSheet;
+    navController.navigationBar.backgroundColor = [UIColor whiteColor];
+    if (viewController.presentedViewController == nil)
+    {
+        [viewController presentViewController:navController animated:YES completion:nil];
+    }
+    else
+    {
+        [viewController.presentedViewController presentViewController:navController animated:YES completion:nil];
+    }
+    
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -99,7 +120,7 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    
+    [self.tableView reloadData];
     [[AnalyticsManager sharedManager] trackScreenWithName:kAnalyticsViewMenuAccounts];
 }
 
@@ -155,6 +176,7 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(accountListUpdated:) name:kAlfrescoAccountsListEmptyNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(accountConfigurationUpdated:) name:kAppConfigurationAccountsConfigurationUpdatedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mainMenuConfigurationChanged:) name:kAlfrescoConfigFileDidUpdateNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showAccountPicker:) name:kAlfrescoShowAccountPickerNotification object:nil];
 }
 
 - (void)dealloc
@@ -189,6 +211,12 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
 {
     NSDictionary *configuration = notification.userInfo;
     [self configureViewForConfiguration:configuration];
+}
+
+- (void)showAccountPicker:(NSNotification *)notification
+{
+    [self showPickerAccountsWithCurrentAccount:(UserAccount *)notification.object
+                              onViewController:self.presentationPickerDelegate.accountPickerPresentationViewController];
 }
 
 #pragma mark - UIRefreshControl Functions
@@ -256,14 +284,11 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
         if (account.accountType == UserAccountTypeCloud)
         {
             accountTypeImage = [[UIImage imageNamed:@"account-type-cloud.png"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-            if (account.oauthData && ![account.oauthData.apiKey isEqualToString:CLOUD_OAUTH_KEY])
-            {
-                cell.imageView.tintColor = [UIColor redColor];
-            }
-            else
-            {
-                cell.imageView.tintColor = [UIColor appTintColor];
-            }
+            cell.imageView.tintColor = [UIColor redColor];
+        }
+        else if (account.accountType == UserAccountTypeAIMS)
+        {
+            accountTypeImage = [UIImage imageNamed:@"aims-account"];
         }
         
         cell.imageView.image = accountTypeImage;
@@ -374,7 +399,7 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
     UserAccount *account = self.tableViewData[indexPath.section][indexPath.row];
     __weak typeof(self) weakSelf = self;
     
-    void (^removeAccount)() = ^(){
+    void (^removeAccount)(void) = ^(){
 	    [[RealmSyncManager sharedManager] disableSyncForAccount:account fromViewController:weakSelf cancelBlock:^{
 	        [weakSelf performSelector:@selector(hideDeleteButton) withObject:nil afterDelay:0.05];
 	    } completionBlock:^{
@@ -383,6 +408,24 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
 	    }];
     };
     
+    void (^removeAccountAndCheckAIMS)(void) = ^(){
+           __strong typeof(self) strongSelf = weakSelf;
+           if (account.accountType == UserAccountTypeAIMS) {
+               [[LoginManager sharedManager] showLogOutAIMSWebviewForAccount:account
+                                                        navigationController:strongSelf.navigationController
+                                                             completionBlock:^(BOOL successful, NSError *error) {
+                   
+                   if (successful) {
+                       removeAccount();
+                   }
+               }];
+           }
+           else
+           {
+               removeAccount();
+           }
+       };
+    
     // If this is the last paid account and passcode is enabled, authenticate via passcode before deleting the account.
     if ([[PreferenceManager sharedManager] shouldUsePasscodeLock] && [accountManager numberOfPaidAccounts] == 1 && account.isPaidAccount)
     {
@@ -390,7 +433,7 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
             switch (status)
             {
                 case PinFlowCompletionStatusSuccess:
-                    removeAccount();
+                    removeAccountAndCheckAIMS();
                     break;
                     
                 case PinFlowCompletionStatusCancel:
@@ -412,10 +455,9 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
             [TouchIDManager evaluatePolicyWithCompletionBlock:^(BOOL success, NSError *authenticationError){
                 if (success)
                 {
-                    [navController dismissViewControllerAnimated:NO completion:nil];
-                    
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        removeAccount();
+                        [navController dismissViewControllerAnimated:NO completion:nil];
+                        removeAccountAndCheckAIMS();
                     });
                 }
             }];
@@ -423,18 +465,19 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
     }
     else
     {
-        removeAccount();
+        removeAccountAndCheckAIMS();
     }
 }
+
 
 #pragma mark - Add Account
 
 - (void)addAccount:(id)sender
 {
-    AccountTypeSelectionViewController *accountTypeController = [[AccountTypeSelectionViewController alloc] init];
-    NavigationViewController *addAccountNavigationController = [[NavigationViewController alloc] initWithRootViewController:accountTypeController];
-    addAccountNavigationController.modalPresentationStyle = UIModalPresentationFormSheet;
-    [self presentViewController:addAccountNavigationController animated:YES completion:nil];
+    AccountDetailsViewController *accountDetailsViewController = [[AccountDetailsViewController alloc] initWithDataSourceType:AccountDataSourceTypeNewAccountServer account:nil configuration:nil session:nil];
+    NavigationViewController *accountDetailsNavController = [[NavigationViewController alloc] initWithRootViewController:accountDetailsViewController];
+    accountDetailsNavController.modalPresentationStyle = UIModalPresentationFormSheet;
+    [self presentViewController:accountDetailsNavController animated:YES completion:nil];
 }
 
 #pragma mark - Private Methods
@@ -450,6 +493,53 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
 {
     UIImage *selectionImage = isSelected ? [UIImage imageNamed:@"green_selected_circle"] : [UIImage imageNamed:@"unselected_circle"];
     [(UIButton *)cell.accessoryView setBackgroundImage:selectionImage forState:UIControlStateNormal];
+}
+
+- (void)authenticateWithAccount:(UserAccount *)account networkId:(NSString *)networkId
+{
+    __weak typeof(self) weakSelf = self;
+    [[LoginManager sharedManager] attemptLoginToAccount:account networkId:networkId completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
+        __strong typeof(self) strongSelf = weakSelf;
+        if (!successful)
+        {
+            if (UserAccountTypeAIMS != account.accountType) {
+                if (account.password.length > 0)
+                {
+                    displayErrorMessage([ErrorDescriptions descriptionForError:error]);
+                }
+                else
+                {
+                    // Missing details - possibly first launch of an MDM-configured account
+                    if ([account.username length] == 0)
+                    {
+                        displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.accountSettings", @"Enter user name and password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
+                    }
+                    else
+                    {
+                        displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.confirmPassword", @"Confirm password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
+                    }
+                }
+            }
+        }
+        else
+        {
+            [[AccountManager sharedManager] selectAccount:account selectNetwork:networkId alfrescoSession:alfrescoSession];
+            [strongSelf.tableView reloadData];
+            
+            NSString *label = account.accountType == UserAccountTypeOnPremise ? ([account.samlData isSamlEnabled] ? kAnalyticsEventLabelOnPremiseSAML : kAnalyticsEventLabelOnPremise) : kAnalyticsEventLabelCloud;
+            [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategorySession
+                                                              action:kAnalyticsEventActionSwitch
+                                                               label:label
+                                                               value:@1];
+            if (networkId)
+            {
+                [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategorySession
+                                                                  action:kAnalyticsEventActionSwitch
+                                                                   label:kAnalyticsEventLabelNetwork
+                                                                   value:@1];
+            }
+        }
+    }];
 }
 
 - (void)selectAccountButtonClicked:(UIButton *)sender
@@ -484,46 +574,47 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
         account = (UserAccount *)item;
     }
     
+    [self selectAccount:account andNetworkId:networkId];
+}
+
+- (void)selectAccount:(UserAccount*)account andNetworkId:(NSString*)networkId
+{
+    [[LoginManager sharedManager] cancelActiveSessionRefreshTasks];
     if (account.accountType == UserAccountTypeOnPremise || networkId != nil)
     {
-        [[LoginManager sharedManager] attemptLoginToAccount:account networkId:networkId completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
-            if (!successful)
+        if(account.accountType == UserAccountTypeCloud)
+        {
+            __weak typeof(self) weakSelf = self;
+            [[AccountManager sharedManager] presentCloudTerminationAlertControllerOnViewController:self completionBlock:^{
+                __strong typeof(self) strongSelf = weakSelf;
+                [strongSelf authenticateWithAccount:account networkId:networkId];
+            }];
+        }
+        else
+        {
+            [self authenticateWithAccount:account networkId:networkId];
+        }
+    }
+    else if (account.accountType == UserAccountTypeAIMS)
+    {
+        __weak typeof(self) weakSelf = self;
+        [[LoginManager sharedManager] authenticateWithAIMSOnPremiseAccount:account
+                                                           completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
+            __strong typeof(self) strongSelf = weakSelf;
+            if (alfrescoSession)
             {
-                if (account.password.length > 0)
-                {
-                    displayErrorMessage([ErrorDescriptions descriptionForError:error]);
-                }
-                else
-                {
-                    // Missing details - possibly first launch of an MDM-configured account
-                    if ([account.username length] == 0)
-                    {
-                        displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.accountSettings", @"Enter user name and password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
-                    }
-                    else
-                    {
-                        displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.confirmPassword", @"Confirm password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
-                    }
-                }
+                [[AccountManager sharedManager] selectAccount:account selectNetwork:networkId alfrescoSession:alfrescoSession];
+                [strongSelf.tableView reloadData];
             }
             else
             {
-                [[AccountManager sharedManager] selectAccount:account selectNetwork:networkId alfrescoSession:alfrescoSession];
-                [self.tableView reloadData];
-                
-                NSString *label = account.accountType == UserAccountTypeOnPremise ? ([account.samlData isSamlEnabled] ? kAnalyticsEventLabelOnPremiseSAML : kAnalyticsEventLabelOnPremise) : kAnalyticsEventLabelCloud;
-                [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategorySession
-                                                                  action:kAnalyticsEventActionSwitch
-                                                                   label:label
-                                                                   value:@1];
-                if (networkId)
+                if ([strongSelf.presentationPickerDelegate respondsToSelector:@selector(accountPickerPresentationViewController)])
                 {
-                    [[AnalyticsManager sharedManager] trackEventWithCategory:kAnalyticsEventCategorySession
-                                                                      action:kAnalyticsEventActionSwitch
-                                                                       label:kAnalyticsEventLabelNetwork
-                                                                       value:@1];
+                    [strongSelf showPickerAccountsWithCurrentAccount:account
+                                                    onViewController:strongSelf.presentationPickerDelegate.accountPickerPresentationViewController];
                 }
             }
+
         }];
     }
 }
@@ -539,5 +630,67 @@ static CGFloat const kAccountNetworkCellHeight = 50.0f;
     self.addAccountsButton.accessibilityIdentifier = kAccountVCAddAccountButtonIdentifier;
     self.tableView.accessibilityIdentifier = KAccountVCTableViewIdentifier;
 }
+
+- (void)goToLoginWithAIMSScreen
+{
+    
+}
+
+#pragma mark - AccountPicker Delegate
+
+- (void)addAccount
+{
+    AccountDetailsViewController *accountDetailsViewController = [[AccountDetailsViewController alloc] initWithDataSourceType:AccountDataSourceTypeNewAccountServer account:nil configuration:nil session:nil];
+    NavigationViewController *accountDetailsNavController = [[NavigationViewController alloc] initWithRootViewController:accountDetailsViewController];
+    accountDetailsNavController.modalPresentationStyle = UIModalPresentationFormSheet;
+    
+    if ([self.presentationPickerDelegate respondsToSelector:@selector(accountPickerPresentationViewController)])
+    {
+        [self.presentationPickerDelegate.accountPickerPresentationViewController presentViewController:accountDetailsNavController animated:YES completion:nil];
+    }
+    
+    
+}
+
+- (void)resigninWithCurrentUser:(UserAccount * _Nullable)currentUser viewcontroller:(UIViewController * _Nonnull)viewcontroller
+{
+    if(currentUser.accountType == UserAccountTypeAIMS)
+    {
+        __weak typeof(self) weakSelf = self;
+        void (^obtainedAIMSCredentialBlock)(UserAccount *, NSError *) = ^void(UserAccount *account, NSError *error){
+            if (!error) {
+                [[LoginManager sharedManager] authenticateWithAIMSOnPremiseAccount:account
+                                                                   completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
+                    if (alfrescoSession)
+                    {
+                        [[AccountManager sharedManager] selectAccount:currentUser selectNetwork:nil alfrescoSession:alfrescoSession];
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                            [viewcontroller dismissViewControllerAnimated:YES
+                                                               completion:nil];
+                            [weakSelf.tableView reloadData];
+                        });
+                    }
+                }];
+            }
+        };
+        
+        if ([self.presentationPickerDelegate respondsToSelector:@selector(accountPickerPresentationViewController)])
+        {
+            [[LoginManager sharedManager] showAIMSWebviewForAccount:currentUser
+                                               navigationController:self.presentationPickerDelegate.accountPickerPresentationViewController
+                                                    completionBlock:obtainedAIMSCredentialBlock];
+        }
+    }
+    else
+    {
+        [self selectAccount:currentUser andNetworkId:nil];
+    }
+}
+
+- (void)signInUserAccount:(UserAccount * _Nullable)userAccount
+{
+    [self selectAccount:userAccount andNetworkId:nil];
+}
+
 
 @end

@@ -1,6 +1,6 @@
 /*
  ******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile SDK.
  *
@@ -732,6 +732,39 @@
         if (succeeded)
         {
             completionBlock([self.viewConfigHelper viewConfigForIdentifier:identifier], nil);
+        }
+        else
+        {
+            completionBlock(nil, error);
+        }
+    }];
+}
+
+- (AlfrescoRequest *)retrieveViewConfigsWithIdentifiers:(NSArray *)identifiers
+                                      completionBlock:(AlfrescoViewConfigsCompletionBlock)completionBlock
+{
+    return [self retrieveViewConfigsWithIdentifiers:identifiers scope:self.defaultConfigScope completionBlock:completionBlock];
+}
+
+- (AlfrescoRequest *)retrieveViewConfigsWithIdentifiers:(NSArray *)identifiers
+                                                  scope:(AlfrescoConfigScope *)scope
+                                        completionBlock:(AlfrescoViewConfigsCompletionBlock)completionBlock
+{
+    __weak typeof(self) weakSelf = self;
+    return [self initializeInternalStateWithCompletionBlock:^(BOOL succeeded, NSError *error) {
+        if(succeeded)
+        {
+            __strong typeof(self) strongSelf = weakSelf;
+            NSMutableArray *configs = [NSMutableArray new];
+            for(NSString *identifier in identifiers)
+            {
+                AlfrescoViewConfig *config = [strongSelf.viewConfigHelper viewConfigForIdentifier:identifier];
+                if (config)
+                {
+                    [configs addObject:config];
+                }
+            }
+            completionBlock(configs, nil);
         }
         else
         {

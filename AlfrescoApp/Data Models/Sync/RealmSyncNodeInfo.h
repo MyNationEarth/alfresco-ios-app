@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -17,6 +17,7 @@
  ******************************************************************************/
 
 #import <Realm/Realm.h>
+#import <AlfrescoSDK-iOS/AlfrescoSDK.h>
 
 @class RealmSyncError;
 

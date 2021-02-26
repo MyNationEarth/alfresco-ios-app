@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -22,6 +22,7 @@
 #import "DownloadManager.h"
 #import "RealmSyncManager.h"
 #import "ConnectivityManager.h"
+#import "AccountManager.h"
 
 static NSString * const kTextFileMimeType = @"text/plain";
 
@@ -278,12 +279,12 @@ static NSString * const kTextFileMimeType = @"text/plain";
         BOOL isSyncDocument = [self.editingDocument isNodeInSyncList];
         if (isSyncDocument)
         {
-            NSString *syncContentPath = [self.editingDocument contentPath];
+            NSString *syncContentPath = [[RealmSyncCore sharedSyncCore] contentPathForNode:self.editingDocument forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];;
             [text writeToFile:syncContentPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
             
             [syncManager retrySyncForDocument:self.editingDocument completionBlock:^{
                 RLMRealm *realm = [[RealmManager sharedManager] realmForCurrentThread];
-                AlfrescoDocument *document = (AlfrescoDocument *)([[RealmManager sharedManager] syncNodeInfoForObject:self.editingDocument ifNotExistsCreateNew:NO inRealm:realm].alfrescoNode);
+                AlfrescoDocument *document = (AlfrescoDocument *)([[RealmSyncCore sharedSyncCore] syncNodeInfoForObject:self.editingDocument ifNotExistsCreateNew:NO inRealm:realm].alfrescoNode);
                 [[NSNotificationCenter defaultCenter] postNotificationName:kAlfrescoDocumentEditedNotification object:document];
             }];
             [self dismissViewControllerAnimated:YES completion:nil];
@@ -304,10 +305,11 @@ static NSString * const kTextFileMimeType = @"text/plain";
                 }
                 else
                 {
-                    void (^saveBlock)() = ^(){
+                    void (^saveBlock)(void) = ^(){
                         [[DownloadManager sharedManager] saveDocument:self.editingDocument contentPath:self.temporaryFilePath showOverrideAlert:false completionBlock:^(NSString *filePath) {
                             [self dismissViewControllerAnimated:YES completion:^{
                                 displayInformationMessage([NSString stringWithFormat:NSLocalizedString(@"download.success-as.message", @"Download succeeded"), filePath.lastPathComponent]);
+                                [Notifier notifyWithAlfrescoError:error];
                             }];
                         }];
                     };
@@ -317,7 +319,9 @@ static NSString * const kTextFileMimeType = @"text/plain";
                                                                                       preferredStyle:UIAlertControllerStyleAlert];
                     UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", @"Cancel")
                                                                            style:UIAlertActionStyleCancel
-                                                                         handler:nil];
+                                                                         handler:^(UIAlertAction * _Nonnull action) {
+                        [Notifier notifyWithAlfrescoError:error];
+                    }];
                     [alertController addAction:cancelAction];
                     UIAlertAction *saveAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"document.edit.button.save", @"Save to Local Files")
                                                                          style:UIAlertActionStyleDefault

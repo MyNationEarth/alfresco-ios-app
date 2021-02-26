@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -26,6 +26,7 @@
 #import "DetailSplitViewController.h"
 #import "UniversalDevice.h"
 #import "ContainerViewController.h"
+#import "LocationManager.h"
 
 
 static NSDictionary *smallIconMappings;
@@ -776,23 +777,6 @@ NSString *filenameAppendedWithDateModified(NSString *filenameOrPath, AlfrescoNod
     [button setBackgroundImage:image forState:UIControlStateHighlighted];
 }
 
-+ (NSString *)nodeRefWithoutVersionID:(NSString *)originalIdentifier
-{
-    NSString *cleanNodeRef = nil;
-    
-    NSArray *strings = [originalIdentifier componentsSeparatedByString:@";"];
-    if (strings.count > 0)
-    {
-        cleanNodeRef = strings[0];
-    }
-    else
-    {
-        cleanNodeRef = originalIdentifier;
-    }
-    
-    return cleanNodeRef;
-}
-
 + (NSArray *)localisationsThatRequireTwoRowsInActionView
 {
     return @[kAlfrescoISO6391ItalianCode, kAlfrescoISO6391GermanCode, kAlfrescoISO6391SpanishCode, kAlfrescoISO6391JapaneseCode];
@@ -851,6 +835,67 @@ NSString *filenameAppendedWithDateModified(NSString *filenameOrPath, AlfrescoNod
                                                                }];
     [alertController addAction:changeSettingsAction];
     [[UniversalDevice topPresentedViewController] presentViewController:alertController animated:YES completion:nil];
+}
+
++ (NSData *)dataFromImage:(UIImage *)image metadata:(NSDictionary *)metadata mimetype:(NSString *)mimetype
+{
+    NSMutableData *imageData = [NSMutableData data];
+    CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, (__bridge CFStringRef)mimetype, NULL);
+    CGImageDestinationRef imageDataDestination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)imageData, uti, 1, NULL);
+    
+    if (imageDataDestination == NULL)
+    {
+        AlfrescoLogError(@"Failed to create image destination");
+        imageData = nil;
+    }
+    else
+    {
+        if (metadata)
+        {
+            CGImageDestinationAddImage(imageDataDestination, image.CGImage, (__bridge CFDictionaryRef)metadata);
+        }
+        else
+        {
+            CGImageDestinationAddImage(imageDataDestination, image.CGImage, NULL);
+        }
+        
+        if (CGImageDestinationFinalize(imageDataDestination) == NO)
+        {
+            AlfrescoLogError(@"Failed to finalise");
+            imageData = nil;
+        }
+        CFRelease(imageDataDestination);
+    }
+    
+    CFRelease(uti);
+    
+    return imageData;
+}
+
++ (NSDictionary *)metadataByAddingGPSToMetadata:(NSDictionary *)metadata
+{
+    NSMutableDictionary *returnedMetadata = [metadata mutableCopy];
+    
+    CLLocationCoordinate2D coordinates = [[LocationManager sharedManager] currentLocationCoordinates];
+    
+    NSDictionary *gpsDictionary = @{(NSString *)kCGImagePropertyGPSLatitude : [NSNumber numberWithFloat:fabs(coordinates.latitude)],
+                                    (NSString *)kCGImagePropertyGPSLatitudeRef : ((coordinates.latitude >= 0) ? @"N" : @"S"),
+                                    (NSString *)kCGImagePropertyGPSLongitude : [NSNumber numberWithFloat:fabs(coordinates.longitude)],
+                                    (NSString *)kCGImagePropertyGPSLongitudeRef : ((coordinates.longitude >= 0) ? @"E" : @"W")
+    };
+    
+    [returnedMetadata setValue:gpsDictionary forKey:(NSString *)kCGImagePropertyGPSDictionary];
+    
+    return returnedMetadata;
+}
+
+
++ (NSDictionary *)metadataByAddingOrientation:(NSInteger)orientation toMetadata:(NSDictionary *)metadata
+{
+    NSMutableDictionary *returnedMetadata = [metadata mutableCopy];
+    [returnedMetadata setValue:[NSNumber numberWithInteger:orientation] forKey:(NSString *)kCGImagePropertyOrientation];
+    
+    return returnedMetadata;
 }
 
 @end

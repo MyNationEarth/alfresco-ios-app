@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -21,6 +21,6 @@
 @interface PinBulletsView : UIView
 
 - (void)fillBullets:(BOOL)fill forPin:(NSString *)pin;
-- (void)shakeWithCompletionBlock:(void (^)())completionBlock;
+- (void)shakeWithCompletionBlock:(void (^)(void))completionBlock;
 
 @end

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -17,23 +17,14 @@
  ******************************************************************************/
 
 #import "AccountDataSource.h"
+#import "AccountFlowDelegate.h"
 
 @class AccountDetailsViewController;
 
-@protocol AccountDetailsViewControllerDelegate <NSObject>
-
-@optional
-- (void)accountDetailsViewControllerWillDismiss:(AccountDetailsViewController *)controller;
-- (void)accountDetailsViewControllerDidDismiss:(AccountDetailsViewController *)controller;
-- (void)accountDetailsViewController:(AccountDetailsViewController *)controller willDismissAfterAddingAccount:(UserAccount *)account;
-- (void)accountDetailsViewController:(AccountDetailsViewController *)controller didDismissAfterAddingAccount:(UserAccount *)account;
-- (void)accountInfoChanged:(UserAccount *)newAccount;
-
-@end
 
 @interface AccountDetailsViewController : UITableViewController
 
-@property (nonatomic, weak) id<AccountDetailsViewControllerDelegate> delegate;
+@property (nonatomic, weak) id<AccountFlowDelegate> delegate;
 
 - (instancetype)initWithDataSourceType:(AccountDataSourceType)dataSourceType account:(UserAccount *)account configuration:(NSDictionary *)configuration session:(id<AlfrescoSession>)session;
 

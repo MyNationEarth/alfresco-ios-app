@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -17,6 +17,9 @@
  ******************************************************************************/
   
 #import "UserAccount.h"
+#import "RealmManagerProtocol.h"
+#import "AppConfigurationManagerProtocol.h"
+#import "AnalyticsManagerProtocol.h"
 
 @class RequestHandler;
 
@@ -31,8 +34,13 @@ typedef NS_ENUM(NSInteger, ImportCertificateStatus)
 
 @property (nonatomic, strong, readonly) UserAccount *selectedAccount;
 
+@property (nonatomic, weak) id<RealmManagerProtocol> realmManager;
+@property (nonatomic, weak) id<AppConfigurationManagerProtocol> appConfigurationManager;
+@property (nonatomic, weak) id<AnalyticsManagerProtocol> analyticsManager;
+
 + (AccountManager *)sharedManager;
 - (NSArray *)allAccounts;
+- (void)removeCloudAccounts;
 - (void)addAccount:(UserAccount *)account;
 - (void)addAccounts:(NSArray *)accounts;
 - (void)removeAccount:(UserAccount *)account;
@@ -40,9 +48,13 @@ typedef NS_ENUM(NSInteger, ImportCertificateStatus)
 - (void)saveAccountsToKeychain;
 - (NSInteger)totalNumberOfAddedAccounts;
 - (NSInteger)numberOfPaidAccounts;
+- (void)loadAccountsFromKeychain;
+
 - (void)selectAccount:(UserAccount *)selectedAccount selectNetwork:(NSString *)networkIdentifier alfrescoSession:(id<AlfrescoSession>)alfrescoSession;
 - (void)deselectSelectedAccount;
 - (RequestHandler *)updateAccountStatusForAccount:(UserAccount *)account completionBlock:(void (^)(BOOL successful, NSError *error))completionBlock;
+
+- (void)presentCloudTerminationAlertControllerOnViewController:(UIViewController *)presentingViewController completionBlock:(void (^)(void))completionBlock;
 
 /*
  * Account Certificates Methods

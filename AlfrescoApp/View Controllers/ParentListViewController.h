@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -17,6 +17,8 @@
  ******************************************************************************/
   
 #import "ErrorDescriptions.h"
+#import "ALFTableView.h"
+#import "MBProgressHUD.h"
 
 @class AlfrescoFolder;
 @class AlfrescoPagingResult;

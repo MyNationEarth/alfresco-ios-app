@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -17,17 +17,10 @@
  ******************************************************************************/
 
 #import <Foundation/Foundation.h>
-#import "AccountConfiguration.h"
-#import "AlfrescoConfigService.h"
+#import "AppConfigurationManagerProtocol.h"
 
-@interface AppConfigurationManager : NSObject
+@interface AppConfigurationManager : NSObject <AppConfigurationManagerProtocol>
 
 + (instancetype)sharedManager;
-
-- (AccountConfiguration *)accountConfigurationForAccount:(UserAccount *)account;
-- (AlfrescoConfigService *)configurationServiceForNoAccountConfiguration;
-- (AlfrescoConfigService *)configurationServiceForCurrentAccount;
-- (AlfrescoConfigService *)configurationServiceForAccount:(UserAccount *)account;
-- (AlfrescoProfileConfig *)selectedProfileForAccount:(UserAccount *)account;
 
 @end

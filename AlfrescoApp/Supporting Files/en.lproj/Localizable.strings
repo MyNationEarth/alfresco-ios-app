@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -172,7 +172,6 @@
 "error.person.profile.no.profile.message" = "Couldn't find user; %@";
 "error.person.profile.email.failed.title" = "Sending Unsuccessful";
 "error.person.profile.email.failed.message" = "Couldn't send the email. Try again later.";
-
 /**
  * Permissions
  */
@@ -370,7 +369,7 @@
  * About View Controller
  */
 "about.title" = "About";
-"about.content" = "Alfresco Content Services provides open, flexible, highly scalable Enterprise Content Management (ECM) - which makes it easy to access and collaborate on content wherever you are. \n\n The Alfresco Content Services mobile app gives you fast, secure access to your Alfresco content and associated workflow processes. It works with Alfresco Content Services, Alfresco Community Edition (4.2 and above) and Alfresco in the Cloud. \n\n This mobile application connects using your Alfresco Content Services login credentials (over HTTP or HTTPS), and manages access based on your permissions.";
+"about.content" = "Alfresco Content Services provides open, flexible, highly scalable Enterprise Content Management (ECM) - which makes it easy to access and collaborate on content wherever you are. \n\n The Alfresco Content Services mobile app gives you fast, secure access to your Alfresco content and associated workflow processes. It works with Alfresco Content Services, Alfresco Community Edition (4.2 and above) and Alfresco Content Services in the Cloud. \n\n This mobile application connects using your Alfresco Content Services login credentials (over HTTP or HTTPS), and manages access based on your permissions.";
 "about.version.number" = "Version: %@ (%@)";
 "about.build.date.time" = "Build Date: %s %s";
 
@@ -921,3 +920,42 @@
  */
 "sync.info.skip" = "Skip";
 "sync.info.next.laststep" = "Ok, I've got it.";
+
+/**
+ * Cloud Termination Alert
+ */
+"cloudtermination.message" = "my.alfresco.com will be turned off on June 28, 2019. Please contact your Administrator for guidance on how to export your data from this service.";
+
+/**
+* Multiple photos Upload Views
+*/
+"browser.actionsheet.takecontinuosphotos" = "Take Multiple Photos";
+"gallery.photos.selectAll" = "Select All";
+"gallery.photos.takeMore" = "Take More";
+"gallery.photos.remainingPhotos" = "%d/%d remaining";
+"gallery.photos.uploadingPhotosComplete" = "Uploading complete.";
+"gallery.camera.tomanyphotos" = "You can upload a maximum of %d photos at a time.";
+"gallery.camera.cancelCamera" = "Are you sure you want to cancel? You will lose the photos that you've just captured.";
+"gallery.photos.defaultPlaceholderName" = "Default Files Name";
+"gallery.photos.defaultName" = "Default Name";
+"gallery.photos.infoNaming" = "The name supplied here will be prefixed to all of the photos that are uploaded";
+"gallery.photos.retryMode" = "Some of your photos did not upload to Alfresco. Press retry to prevent losing them.";
+"gallery.photos.upload.cellular.title" = "Use data for upload multiple photo";
+"gallery.photos.upload.cellular.description" = "Do you want to switch to WI-FI connection to upload these photos?";
+"gallery.photos.uploadTitleScreen" = "Upload Photos";
+
+/**
+* AIMS Views
+*/
+"accountdetails.title.aims" = "Single Sign-On";
+"accountdetails.title.aimssettings" = "Single Sign-On Settings";
+"accountdetails.fields.contentAdress" = "Content URL";
+"accountdetails.fields.realm" = "Realm";
+"accountdetails.fields.clientID" = "Client ID";
+"accountdetails.buttons.logout" = "Log out";
+"accountdetails.needHelp.title" = "How to sign in";
+"accountdetails.needHelp.text" = "You can enter the URL of your Alfresco Content Services instance.\n\n • You will be required to enter your username and password to authenticate.\n\n • You can also enter the URL of your Identity Service in order to authenticate with your organizations identity provider (SSO). You will have to provide the URL of your Alfresco Content Services instance on the next screen.\n\n • Speak to your Alfresco administrator if you require help.";
+"accountpicker.title" = "Session Expired";
+"accountpicker.subtitle" = "You are no longer signed in. Please Sign In again to continue.";
+"accountpicker.info.other" = "Try another account.";
+"accountpicker.button.addaccount" = "Add account";

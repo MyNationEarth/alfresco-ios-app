@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -172,7 +172,6 @@
 "error.person.profile.no.profile.message" = "L'utilisateur est introuvable ; %@";
 "error.person.profile.email.failed.title" = "L'envoi a échoué";
 "error.person.profile.email.failed.message" = "Impossible d'envoyer l'e-mail. Réessayez plus tard.";
-
 /**
  * Permissions
  */
@@ -921,3 +920,42 @@
  */
 "sync.info.skip" = "Ignorer";
 "sync.info.next.laststep" = "Ok, c'est bon.";
+
+/**
+ * Cloud Termination Alert
+ */
+"cloudtermination.message" = "my.alfresco.com sera définitivement désactivé le 28 juin 2019. Veuillez contacter votre administrateur système qui vous indiquera comment exporter vos données depuis ce service.";
+
+/**
+* Multiple photos Upload Views
+*/
+"browser.actionsheet.takecontinuosphotos" = "Prendre plusieurs photos";
+"gallery.photos.selectAll" = "Sélectionner tout";
+"gallery.photos.takeMore" = "Prendre d'autres photos";
+"gallery.photos.remainingPhotos" = "%d/%d restant(s)";
+"gallery.photos.uploadingPhotosComplete" = "Importation terminée.";
+"gallery.camera.tomanyphotos" = "Vous pouvez importer %d photos maximum à la fois.";
+"gallery.camera.cancelCamera" = "Voulez-vous vraiment annuler ? Vous perdrez les photos que vous venez de capturer.";
+"gallery.photos.defaultPlaceholderName" = "Nom des fichiers par défaut";
+"gallery.photos.defaultName" = "Nom par défaut";
+"gallery.photos.infoNaming" = "Le nom saisi ici sera utilisé comme préfixe pour toutes les photos importées";
+"gallery.photos.retryMode" = "Certaines de vos photos n'ont pas pu être importées dans Alfresco. Appuyez sur réessayer pour éviter de les perdre.";
+"gallery.photos.upload.cellular.title" = "Utiliser les données pour importer plusieurs photos";
+"gallery.photos.upload.cellular.description" = "Voulez-vous basculer vers la connexion Wi-Fi pour importer ces photos ?";
+"gallery.photos.uploadTitleScreen" = "Importer des photos";
+
+/**
+* AIMS Views
+*/
+"accountdetails.title.aims" = "Authentification unique";
+"accountdetails.title.aimssettings" = "Paramètres d’authentification unique";
+"accountdetails.fields.contentAdress" = "URL du contenu";
+"accountdetails.fields.realm" = "Domaine";
+"accountdetails.fields.clientID" = "ID client";
+"accountdetails.buttons.logout" = "Déconnexion";
+"accountdetails.needHelp.title" = "Comment se connecter";
+"accountdetails.needHelp.text" = "Entrez l’URL de votre instance d’Alfresco Content Services.\n\n • Vous devrez entrer vos nom d’utilisateur et mot de passe pour vous identifier.\n\n • Vous pouvez aussi saisir l’URL de votre Identity Service pour vous identifier auprès du fournisseur d’identité de votre société (SSO). Vous devrez entrer l’URL de votre instance d’Alfresco Content Services sur l’écran suivant.\n\n • Pour obtenir de l’aide, contactez votre administrateur Alfresco.";
+"accountpicker.title" = "Session expirée";
+"accountpicker.subtitle" = "Vous n'êtes plus connecté. Reconnectez-vous pour continuer.";
+"accountpicker.info.other" = "Essayez un autre compte.";
+"accountpicker.button.addaccount" = "Nouveau compte";

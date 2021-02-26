@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -237,11 +237,6 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     
     [super viewDidLoad];
     
-    if ([self respondsToSelector:@selector(edgesForExtendedLayout)])
-    {
-        self.edgesForExtendedLayout = UIRectEdgeLeft | UIRectEdgeBottom | UIRectEdgeRight;
-    }
-    
     self.navigationController.navigationBar.translucent = NO;
     
     UINib *nodeCellNib = [UINib nibWithNibName:NSStringFromClass([FileFolderCollectionViewCell class]) bundle:nil];
@@ -251,17 +246,19 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     UINib *sectionHeaderNib = [UINib nibWithNibName:NSStringFromClass([SearchCollectionSectionHeader class]) bundle:nil];
     [self.collectionView registerNib:sectionHeaderNib forSupplementaryViewOfKind:UICollectionElementKindSectionHeader withReuseIdentifier:@"SectionHeader"];
     
-    self.title = self.dataSource.screenTitle;
+    self.title = self.inUseDataSource.screenTitle;
     
     if(self.shouldIncludeSearchBar)
     {
         self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
         self.searchController.searchResultsUpdater = self;
-        self.searchController.dimsBackgroundDuringPresentation = NO;
+        self.searchController.obscuresBackgroundDuringPresentation = NO;
         self.searchController.searchBar.delegate = self;
-        self.searchController.searchBar.searchBarStyle = UISearchBarStyleMinimal;
+        self.searchController.searchBar.searchBarStyle = UISearchBarStyleDefault;
         self.searchController.delegate = self;
+        
         self.definesPresentationContext = YES;
+        
     }
 
     if(!self.dataSource)
@@ -270,10 +267,12 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     }
     self.collectionView.dataSource = self.dataSource;
     
-    self.multiSelectToolbar.multiSelectDelegate = self;
-    [self.multiSelectToolbar createToolBarButtonForTitleKey:@"multiselect.button.delete" actionId:kMultiSelectDelete isDestructive:YES];
-    
     [self changeCollectionViewStyle:self.style animated:YES trackAnalytics:NO];
+    
+    self.multiSelectContainerView.toolbar.multiSelectDelegate = self;
+    [self.multiSelectContainerView.toolbar createToolBarButtonForTitleKey:@"multiselect.button.delete" actionId:kMultiSelectDelete isDestructive:YES];
+    self.multiSelectContainerView.heightConstraint = self.multiSelectContainerViewHeightConstraint;
+    self.multiSelectContainerView.bottomConstraint = self.multiSelectContainerViewBottomConstraint;
     
     [self registerForNotifications];
 }
@@ -294,20 +293,43 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     
     if (!IS_IPAD)
     {
-        if(self.shouldIncludeSearchBar)
+        if(self.shouldIncludeSearchBar &&
+           !self.isOnSearchResults)
         {
-            // hide search bar initially
-            self.collectionView.contentSize = CGSizeMake(self.collectionView.contentSize.width, self.collectionView.bounds.size.height - self.collectionView.contentInset.bottom - self.collectionView.contentInset.top + kCollectionViewHeaderHight);
-            self.collectionView.contentOffset = CGPointMake(0., kCollectionViewHeaderHight);
+            __weak typeof(self) weakSelf = self;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(self) strongSelf = weakSelf;
+                strongSelf.collectionView.contentOffset = CGPointMake(0, kCollectionViewHeaderHight);
+            });
         }
     }
     
     [self deselectAllItems];
 }
 
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    
+    CGRect searchBarFrame = self.searchController.searchBar.frame;
+    searchBarFrame.size.width = self.view.frame.size.width;
+    self.searchController.searchBar.frame = searchBarFrame;
+    
+    if (@available(iOS 11.0, *))
+    {
+        self.multiSelectContainerViewHeightConstraint.constant = kPickerMultiSelectToolBarHeight + self.view.safeAreaInsets.bottom;
+    }
+    [self.view layoutIfNeeded];
+    if(!self.editing)
+    {
+        [self.multiSelectContainerView hide];
+    }
+}
+
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    
     if(self.shouldAutoSelectFirstItem)
     {
         [self collectionView:self.collectionView didSelectItemAtIndexPath:[NSIndexPath indexPathForItem:0 inSection:0]];
@@ -343,7 +365,6 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     }
     
     [[AnalyticsManager sharedManager] trackScreenWithName:screenName];
-    
 }
 
 - (void)setEditing:(BOOL)editing animated:(BOOL)animated
@@ -364,13 +385,16 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     {
         [self dismissPopoverOrModalWithAnimation:YES withCompletionBlock:nil];
         [self disablePullToRefresh];
-        [self.multiSelectToolbar enterMultiSelectMode:self.multiSelectToolbarHeightConstraint];
+        
+        [self.multiSelectContainerView show];
         self.swipeToDeleteGestureRecognizer.enabled = NO;
+        [self searchBarEnable:NO];
     }
     else
     {
         [self enablePullToRefresh];
-        [self.multiSelectToolbar leaveMultiSelectMode:self.multiSelectToolbarHeightConstraint];
+        [self.multiSelectContainerView hide];
+        [self searchBarEnable:YES];
     }
     
     if ([self.collectionView.collectionViewLayout isKindOfClass:[BaseCollectionViewFlowLayout class]])
@@ -382,6 +406,14 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
             self.swipeToDeleteGestureRecognizer.enabled = properLayout.shouldSwipeToDelete;
         }
     }
+}
+
+- (void)searchBarEnable:(BOOL)enable
+{
+    self.searchController.searchBar.userInteractionEnabled = enable;
+    self.searchController.searchBar.translucent = enable;
+    self.searchController.searchBar.searchBarStyle = (enable) ? UISearchBarStyleDefault : UISearchBarStyleMinimal;
+    self.searchController.searchBar.backgroundColor = (enable) ? [UIColor clearColor] : [UIColor lightGrayColor];
 }
 
 #pragma mark - Private Functions
@@ -411,14 +443,18 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
 {
     id<AlfrescoSession> session = notification.object;
     self.session = session;
+    self.dataSource.session = session;
     
-    if (session && [self shouldRefresh])
+    if (session && [self shouldRefresh] && [notification.name isEqualToString:kAlfrescoSessionReceivedNotification])
     {
-        [self.dataSource reloadDataSource];
+        [self.inUseDataSource reloadDataSource];
     }
     else if (self == [self.navigationController.viewControllers lastObject])
     {
-        [self.navigationController popToRootViewControllerAnimated:NO];
+        if (UserAccountTypeAIMS != [AccountManager sharedManager].selectedAccount.accountType)
+        {
+            [self.navigationController popToRootViewControllerAnimated:NO];
+        }
     }
 }
 
@@ -449,8 +485,8 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
 
 - (void)confirmDeletingMultipleNodes
 {
-    NSString *titleKey = (self.multiSelectToolbar.selectedItems.count == 1) ? @"multiselect.delete.confirmation.message.one-item" : @"multiselect.delete.confirmation.message.n-items";
-    NSString *title = [NSString stringWithFormat:NSLocalizedString(titleKey, @"Are you sure you want to delete x items"), self.multiSelectToolbar.selectedItems.count];
+    NSString *titleKey = (self.multiSelectContainerView.toolbar.selectedItems.count == 1) ? @"multiselect.delete.confirmation.message.one-item" : @"multiselect.delete.confirmation.message.n-items";
+    NSString *title = [NSString stringWithFormat:NSLocalizedString(titleKey, @"Are you sure you want to delete x items"), self.multiSelectContainerView.toolbar.selectedItems.count];
     
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:title message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     
@@ -463,7 +499,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     alertController.modalPresentationStyle = UIModalPresentationPopover;
     
     UIPopoverPresentationController *popoverPresenter = [alertController popoverPresentationController];
-    popoverPresenter.sourceView = self.multiSelectToolbar;
+    popoverPresenter.sourceView = self.multiSelectContainerView;
     [self presentViewController:alertController animated:YES completion:nil];
 }
 
@@ -471,7 +507,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
 {
     [self setEditing:NO animated:YES];
     [self showHUD];
-    [self deleteNodes:self.multiSelectToolbar.selectedItems completionBlock:^(NSInteger numberDeleted, NSInteger numberFailed) {
+    [self deleteNodes:self.multiSelectContainerView.toolbar.selectedItems completionBlock:^(NSInteger numberDeleted, NSInteger numberFailed) {
         [self hideHUD];
         if (numberFailed == 0)
         {
@@ -511,12 +547,12 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    AlfrescoNode *selectedNode = self.isOnSearchResults ? [self.searchDataSource alfrescoNodeAtIndex:indexPath.item] : [self.dataSource alfrescoNodeAtIndex:indexPath.item];
+    AlfrescoNode *selectedNode = [self.inUseDataSource alfrescoNodeAtIndex:indexPath.item];
     if(selectedNode)
     {
         if (self.isEditing)
         {
-            [self.multiSelectToolbar userDidSelectItem:selectedNode];
+            [self.multiSelectContainerView.toolbar userDidSelectItem:selectedNode];
             FileFolderCollectionViewCell *cell = (FileFolderCollectionViewCell *)[self.collectionView cellForItemAtIndexPath:indexPath];
             [cell wasSelectedInEditMode:YES];
         }
@@ -526,14 +562,14 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
             [self.collectionView selectItemAtIndexPath:indexPath animated:YES scrollPosition:UICollectionViewScrollPositionNone];
             if ([selectedNode isKindOfClass:[AlfrescoFolder class]])
             {
-                FileFolderCollectionViewController *browserViewController = [[FileFolderCollectionViewController alloc] initWithFolder:(AlfrescoFolder *)selectedNode folderPermissions:[self.dataSource permissionsForNode:selectedNode] session:self.session];
+                FileFolderCollectionViewController *browserViewController = [[FileFolderCollectionViewController alloc] initWithFolder:(AlfrescoFolder *)selectedNode folderPermissions:[self.inUseDataSource permissionsForNode:selectedNode] session:self.session];
                 browserViewController.style = self.style;
                 [self.navigationController pushViewController:browserViewController animated:YES];
                 
             }
             else
             {
-                NSString *contentPath = [selectedNode contentPath];
+                NSString *contentPath = [[RealmSyncCore sharedSyncCore] contentPathForNode:selectedNode forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];;
                 BOOL isDirectory = NO;
                 if (![[AlfrescoFileManager sharedManager] fileExistsAtPath:contentPath isDirectory:&isDirectory])
                 {
@@ -541,7 +577,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
                 }
                 
                 [UniversalDevice pushToDisplayDocumentPreviewControllerForAlfrescoDocument:(AlfrescoDocument *)selectedNode
-                                                                               permissions:[self.dataSource permissionsForNode:selectedNode]
+                                                                               permissions:[self.inUseDataSource permissionsForNode:selectedNode]
                                                                                contentFile:contentPath
                                                                           documentLocation:InAppDocumentLocationFilesAndFolders
                                                                                    session:self.session
@@ -561,8 +597,8 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
 {
     if (self.isEditing)
     {
-        AlfrescoNode *selectedNode = [self.dataSource alfrescoNodeAtIndex:indexPath.item];
-        [self.multiSelectToolbar userDidDeselectItem:selectedNode];
+        AlfrescoNode *selectedNode = [self.inUseDataSource alfrescoNodeAtIndex:indexPath.item];
+        [self.multiSelectContainerView.toolbar userDidDeselectItem:selectedNode];
         FileFolderCollectionViewCell *cell = (FileFolderCollectionViewCell *)[self.collectionView cellForItemAtIndexPath:indexPath];
         [cell wasSelectedInEditMode:NO];
     }
@@ -572,10 +608,10 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
 - (void)refreshCollectionView:(UIRefreshControl *)refreshControl
 {
     [self showLoadingTextInRefreshControl:refreshControl];
-    
+    self.editBarButtonItem.enabled = NO;
     if (self.session)
     {
-        [self.dataSource reloadDataSource];
+        [self.inUseDataSource reloadDataSource];
     }
     else
     {
@@ -584,7 +620,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
         [[LoginManager sharedManager] attemptLoginToAccount:selectedAccount networkId:selectedAccount.selectedNetworkId completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
             if (successful)
             {
-                [self.dataSource reloadDataSource];
+                [self.inUseDataSource reloadDataSource];
             }
         }];
     }
@@ -607,7 +643,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
         AlfrescoPermissions *nodePermission = [self.dataSource permissionsForNode:node];
         if (!nodePermission.canDelete)
         {
-            [self.multiSelectToolbar enableAction:kMultiSelectDelete enable:NO];
+            [self.multiSelectContainerView.toolbar enableAction:kMultiSelectDelete enable:NO];
             break;
         }
     }

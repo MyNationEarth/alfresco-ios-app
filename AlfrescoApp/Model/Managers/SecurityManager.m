@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -57,6 +57,7 @@
     
     if ([[PreferenceManager sharedManager] shouldUsePasscodeLock])
     {
+        [self migratePINValuesInKeychain];
         self.pinScreenWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
         self.pinScreenWindow.rootViewController = [UIViewController new];
         [self.pinScreenWindow makeKeyAndVisible];
@@ -126,8 +127,11 @@
 + (void)reset
 {
     NSError *error;
-    [KeychainUtils deleteItemForKey:kPinKey error:&error];
-    [KeychainUtils deleteItemForKey:kRemainingAttemptsKey error:&error];
+    [KeychainUtils deleteItemForKey:kPinKey
+                            inGroup:kSharedAppGroupIdentifier
+                              error:&error];
+    [KeychainUtils deleteItemForKey:kRemainingAttemptsKey
+                              error:&error];
 }
 
 + (void)resetWithType:(ResetType)resetType
@@ -281,7 +285,7 @@
     }
 }
 
-- (void)showPinScreenAnimated:(BOOL)animated inOwnWindow:(BOOL)ownWindow completionBlock:(void (^)())completionBlock
+- (void)showPinScreenAnimated:(BOOL)animated inOwnWindow:(BOOL)ownWindow completionBlock:(void (^)(void))completionBlock
 {
     PinViewController *pvc = [self currentPinScreen];
     
@@ -324,14 +328,30 @@
     
     if (ownWindow)
     {
+        __weak typeof(self) weakSelf = self;
         dispatch_async(dispatch_get_main_queue(), ^{
-            self.pinScreenWindow.rootViewController = navController;
-            [self.pinScreenWindow makeKeyAndVisible];
+            __strong typeof(self) strongSelf = weakSelf;
+            strongSelf.pinScreenWindow.rootViewController = navController;
+            [strongSelf.pinScreenWindow makeKeyAndVisible];
         });
     }
     else
     {
-        [[UniversalDevice topPresentedViewController] presentViewController:navController animated:animated completion:completionBlock];
+        if (self.pinScreenWindow == nil)
+        {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[UniversalDevice topPresentedViewController] presentViewController:navController animated:animated completion:completionBlock];
+            });
+        }
+        else
+        {
+            __weak typeof(self) weakSelf = self;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(self) strongSelf = weakSelf;
+                strongSelf.pinScreenWindow.rootViewController = navController;
+                [strongSelf.pinScreenWindow makeKeyAndVisible];
+            });
+        }
     }
 }
 
@@ -387,7 +407,7 @@
     return currentPinViewController;
 }
 
-- (void)hideCurrentPinViewScreenWithFlow:(PinFlow)pinFlow animated:(BOOL)animated completionBlock:(void (^)())completionBlock
+- (void)hideCurrentPinViewScreenWithFlow:(PinFlow)pinFlow animated:(BOOL)animated completionBlock:(void (^)(void))completionBlock
 {
     PinViewController *pvc = [self currentPinScreen];
     PinFlow currentPinFlow = [pvc pinFlow];
@@ -407,30 +427,33 @@
 
 - (void)evaluatePolicy
 {
-    [TouchIDManager evaluatePolicyWithCompletionBlock:^(BOOL success, NSError *authenticationError){
-        if (success)
-        {
-            [self hideCurrentPinViewScreenWithFlow:PinFlowEnter animated:YES completionBlock:^{
-                [self showBlankScreen:NO];
-            }];
-            
-            if (self.pinScreenWindow && [self.pinScreenWindow isKeyWindow])
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [TouchIDManager evaluatePolicyWithCompletionBlock:^(BOOL success, NSError *authenticationError){
+            if (success)
             {
-                [self switchToMainWindowWithCompletionBlock:nil];
+                [weakSelf hideCurrentPinViewScreenWithFlow:PinFlowEnter animated:YES completionBlock:^{
+                    [weakSelf showBlankScreen:NO];
+                }];
+                
+                if (weakSelf.pinScreenWindow && [weakSelf.pinScreenWindow isKeyWindow])
+                {
+                    [weakSelf switchToMainWindowWithCompletionBlock:nil];
+                }
+                [[NSNotificationCenter defaultCenter] postNotificationName:kShowKeyboardInPinScreenNotification object:nil];
+                
+                [[FileHandlerManager sharedManager] handleCachedPackage];
             }
-            [[NSNotificationCenter defaultCenter] postNotificationName:kShowKeyboardInPinScreenNotification object:nil];
-            
-            [[FileHandlerManager sharedManager] handleCachedPackage];
-        }
-        else
-        {
-            AlfrescoLogDebug(@"Touch ID error: %@", authenticationError.localizedDescription);
-            
-            [self showPinScreenAnimated:NO inOwnWindow: self.pinScreenWindow ? YES : NO completionBlock:^{
-                [self showBlankScreen:NO];
-            }];
-        }
-    }];
+            else
+            {
+                AlfrescoLogDebug(@"Touch ID error: %@", authenticationError.localizedDescription);
+                
+                [weakSelf showPinScreenAnimated:NO inOwnWindow: weakSelf.pinScreenWindow ? YES : NO completionBlock:^{
+                    [weakSelf showBlankScreen:NO];
+                }];
+            }
+        }];
+    });
 }
 
 - (void)switchToMainWindowWithCompletionBlock:(void (^)(void))completionBlock
@@ -448,6 +471,24 @@
             }
         });
     });
+}
+
+- (void)migratePINValuesInKeychain
+{
+    NSError *error;
+    
+    NSString *pin = [KeychainUtils retrieveItemForKey:kPinKey
+                                                error:&error];
+    if (pin.length)
+    {
+        [KeychainUtils deleteItemForKey:kPinKey
+                                  error:&error];
+        
+        [KeychainUtils saveItem:pin
+                         forKey:kPinKey
+                        inGroup:kSharedAppGroupIdentifier
+                          error:&error];
+    }
 }
 
 @end

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -154,7 +154,7 @@ static NSString * const kVersionSeriesValueKeyPath = @"properties.cmis:versionSe
     }
     else
     {
-        NSString *filePath = [selectedNode contentPath];
+        NSString *filePath = [[RealmSyncCore sharedSyncCore] contentPathForNode:selectedNode forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];
         AlfrescoPermissions *syncNodePermissions = [syncManager permissionsForSyncNode:selectedNode];
         
         void (^displayPermissionRetrievalError)(NSError *) = ^void (NSError *error){
@@ -328,6 +328,7 @@ static NSString * const kVersionSeriesValueKeyPath = @"properties.cmis:versionSe
 
 - (void)refreshCollectionView:(UIRefreshControl *)refreshControl
 {
+    self.editBarButtonItem.enabled = NO;
     [self showLoadingTextInRefreshControl:refreshControl];
     
     // Verify Internet connection.

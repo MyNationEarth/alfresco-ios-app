@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -41,7 +41,7 @@
     self.session = session;
     self.delegate = delegate;
     self.searchStatement = searchStatement;
-    
+    self.shouldAllowLayoutChange = NO;
     if (listingContext)
     {
         self.defaultListingContext = listingContext;
@@ -65,7 +65,7 @@
     self.delegate = delegate;
     self.searchString = searchString;
     self.searchOptions = options;
-    
+    self.shouldAllowLayoutChange = NO;
     if (listingContext)
     {
         self.defaultListingContext = listingContext;
@@ -130,8 +130,12 @@
 - (void)reloadDataSource
 {
     [self.dataSourceCollection removeAllObjects];
-    
     [self retrieveNextItems:self.defaultListingContext];
+}
+
+- (NSString*)getSearchType
+{
+    return (self.searchOptions) ? self.searchOptions.typeName : [super getSearchType];
 }
 
 @end

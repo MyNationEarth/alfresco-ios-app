@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -22,6 +22,7 @@
 #import "NewVersionTextViewCell.h"
 #import "DownloadsViewController.h"
 #import "RealmSyncManager.h"
+#import "AccountManager.h"
 
 @interface NewVersionViewController () <DownloadsPickerDelegate>
 
@@ -137,6 +138,7 @@
             NSString *checkoutErrorTitle = NSLocalizedString(@"error.new.version.unable.to.checkout.title", @"Checkout Title");
             NSString *checkoutErrorMessage = [NSString stringWithFormat:NSLocalizedString(@"error.new.version.unable.to.checkout.message", @"Checkout Error Message"), self.document.name, checkoutError.localizedDescription];
             displayErrorMessageWithTitle(checkoutErrorMessage, checkoutErrorTitle);
+            [Notifier notifyWithAlfrescoError:checkoutError];
         }
         else
         {
@@ -178,7 +180,7 @@
                                                                 customMetric:AnalyticsMetricFileSize
                                                                  metricValue:@(self.document.contentLength)];
                     
-                    [[RealmSyncManager sharedManager] didUploadNewVersionForDocument:checkoutDocument updatedDocument:updatedDocument fromPath:self.filePathToUploadDocument];
+                    [[RealmSyncCore sharedSyncCore] didUploadNewVersionForDocument:checkoutDocument updatedDocument:updatedDocument fromPath:self.filePathToUploadDocument forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];
                     
                     dispatch_async(dispatch_get_main_queue(), ^{
                         [[NSNotificationCenter defaultCenter] postNotificationName:kAlfrescoDocumentUpdatedOnServerNotification object:updatedDocument userInfo:@{kAlfrescoDocumentUpdatedFromDocumentParameterKey : self.document}];

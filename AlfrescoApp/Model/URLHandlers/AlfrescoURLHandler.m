@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -30,8 +30,6 @@
 #import "SearchResultsTableViewController.h"
 #import "FilteredTaskViewController.h"
 #import "TaskViewFilter.h"
-
-static NSString * const kAccountsListIdentifier = @"AccountListNew";
 
 static NSString * const kHandlerPrefix = @"alfresco://";
 

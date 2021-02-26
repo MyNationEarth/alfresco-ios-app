@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -17,21 +17,14 @@
  ******************************************************************************/
   
 #import "ParentListViewController.h"
+#import "AccountFlowDelegate.h"
 
 @class AccountTypeSelectionViewController;
 
-@protocol AccountTypeSelectionViewControllerDelegate <NSObject>
-
-@optional
-- (void)accountTypeSelectionViewControllerWillDismiss:(AccountTypeSelectionViewController *)accountTypeSelectionViewController accountAdded:(BOOL)accountAdded;
-- (void)accountTypeSelectionViewControllerDidDismiss:(AccountTypeSelectionViewController *)accountTypeSelectionViewController accountAdded:(BOOL)accountAdded;
-
-@end
-
 @interface AccountTypeSelectionViewController : ParentListViewController 
 
-@property (nonatomic, weak) id<AccountTypeSelectionViewControllerDelegate> delegate;
+@property (nonatomic, weak) id<AccountFlowDelegate> delegate;
 
-- (instancetype)initWithDelegate:(id<AccountTypeSelectionViewControllerDelegate>)delegate;
+- (instancetype)initWithDelegate:(id<AccountFlowDelegate>)delegate;
 
 @end

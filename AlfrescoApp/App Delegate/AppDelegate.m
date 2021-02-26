@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -22,7 +22,6 @@
 #import "AccountManager.h"
 #import "RootRevealViewController.h"
 #import "SwitchViewController.h"
-#import "AccountsViewController.h"
 #import "OnboardingViewController.h"
 #import "ContainerViewController.h"
 #import "MigrationAssistant.h"
@@ -39,13 +38,15 @@
 #import "SecurityManager.h"
 #import "UnderlayViewController.h"
 #import "RealmSyncManager+CoreDataMigration.h"
-#import <HockeySDK/HockeySDK.h>
+#import "RealmSyncCore.h"
+#import "AppConfigurationManager.h"
+@import Firebase;
 
 @import MediaPlayer;
 
 static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
 
-@interface AppDelegate()
+@interface AppDelegate() <AccountPickerPresentationDelegate>
 
 @property (nonatomic, strong) UIViewController *appRootViewController;
 @property (nonatomic, strong) CoreDataCacheHelper *cacheHelper;
@@ -72,12 +73,6 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     /**
-     * This version of the app has been coded in such a way to require valid Alfresco in the Cloud OAuth key and secret tokens.
-     * These should be populated in the AlfrescoApp.xcconfig file, either via an environment variable or directly in the file.
-     * - "CLOUD_OAUTH_KEY"
-     * - "CLOUD_OAUTH_SECRET"
-     * If these values are not present, the app will still attempt to present cloud authentication options.
-     *
      * Functionality that won't be available unless you have other valid keys are:
      * - HockeyApp SDK integration. Requires "HOCKEYAPP_APPID"
      * - Flurry Analytics. Requires "FLURRY_API_KEY"
@@ -85,8 +80,6 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
      * - Google Analytics. Requires "GA_API_KEY"
      *
      */
-    if (CLOUD_OAUTH_KEY.length == 0) AlfrescoLogError(@"CLOUD_OAUTH_KEY must have non-zero length");
-    if (CLOUD_OAUTH_SECRET.length == 0) AlfrescoLogError(@"CLOUD_OAUTH_SECRET must have non-zero length");
     
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     
@@ -98,17 +91,6 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
     NSString *bundleVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"];
     if (![bundleVersion isEqualToString:@"dev"])
     {
-        // HockeyApp SDK
-        if (HOCKEYAPP_APPID.length > 0)
-        {
-            BITHockeyManager *hockeyManager = [BITHockeyManager sharedHockeyManager];
-            [hockeyManager configureWithIdentifier:HOCKEYAPP_APPID];
-            // Disable HockeyApp auto-update manager unless the HOCKEYAPP_UPDATES preprocessor variable contains a non zero-length string
-            hockeyManager.disableUpdateManager = (HOCKEYAPP_UPDATES.length == 0);
-            [hockeyManager startManager];
-            [hockeyManager.authenticator authenticateInstallation];
-        }
-        
         [[AnalyticsManager sharedManager] startAnalytics];
     }
     
@@ -119,6 +101,11 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
         // Migrate any old accounts if required
         [MigrationAssistant runMigrationAssistant];
     }
+    
+    AccountManager *accountManager = [AccountManager sharedManager];
+    accountManager.realmManager = [RealmManager sharedManager];
+    accountManager.appConfigurationManager = [AppConfigurationManager sharedManager];
+    accountManager.analyticsManager = [AnalyticsManager sharedManager];
     
     BOOL isFirstLaunch = [self isAppFirstLaunch];
     if (isFirstLaunch)
@@ -136,6 +123,11 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
     if([[RealmSyncManager sharedManager] isCoreDataMigrationNeeded])
     {
         [[RealmSyncManager sharedManager] initiateMigrationProcess];
+    }
+    
+    if ([[RealmSyncCore sharedSyncCore] isContentMigrationNeeded])
+    {
+        [[RealmSyncCore sharedSyncCore] initiateContentMigrationProcessForAccounts:[AccountManager sharedManager].allAccounts];
     }
 
     // Setup the app and build it's UI
@@ -162,6 +154,7 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
     {
         // If there is a selected Account, attempt login
         AccountManager *accountManager = [AccountManager sharedManager];
+        [accountManager removeCloudAccounts];
         if (accountManager.selectedAccount)
         {
             // Delay to allow the UI to update - reachability check can block the main thread
@@ -169,22 +162,27 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
                 [[LoginManager sharedManager] attemptLoginToAccount:accountManager.selectedAccount networkId:accountManager.selectedAccount.selectedNetworkId completionBlock:^(BOOL successful, id<AlfrescoSession> alfrescoSession, NSError *error) {
                     if (!successful)
                     {
-                        if (accountManager.selectedAccount.password.length > 0)
-                        {
-                            displayErrorMessage([ErrorDescriptions descriptionForError:error]);
-                        }
-                        else
-                        {
-                            // Missing details - possibly first launch of an MDM-configured account
-                            if ([accountManager.selectedAccount.username length] == 0)
+                        if (UserAccountTypeAIMS != accountManager.selectedAccount.accountType) {
+                            if (accountManager.selectedAccount.password.length > 0)
                             {
-                                displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.accountSettings", @"Enter user name and password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
+                                displayErrorMessage([ErrorDescriptions descriptionForError:error]);
                             }
                             else
                             {
-                                displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.confirmPassword", @"Confirm password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
+                                // Missing details - possibly first launch of an MDM-configured account
+                                if ([accountManager.selectedAccount.username length] == 0)
+                                {
+                                    displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.accountSettings", @"Enter user name and password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
+                                }
+                                else
+                                {
+                                    displayWarningMessageWithTitle(NSLocalizedString(@"accountdetails.fields.confirmPassword", @"Confirm password"), NSLocalizedString(@"accountdetails.header.authentication", "Account Details"));
+                                }
                             }
                         }
+                    } else {
+                        // TODO: assess whether to handle this for all calls
+                        [[NSNotificationCenter defaultCenter] postNotificationName:kAlfrescoSessionReceivedNotification object:alfrescoSession userInfo:nil];
                     }
                     
                     if ([launchOptions objectForKey:UIApplicationLaunchOptionsURLKey])
@@ -193,8 +191,6 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
                         [[FileHandlerManager sharedManager] handleURL:url sourceApplication:nil annotation:nil session:alfrescoSession];
                         self.mainMenuViewController.autoselectDefaultMenuOption = NO;
                     }
-                    
-                    [[NSNotificationCenter defaultCenter] postNotificationName:kAlfrescoSessionReceivedNotification object:alfrescoSession userInfo:nil];
                 }];
             });
         }
@@ -209,8 +205,10 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
     return YES;
 }
 
-- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey, id> *)options
 {
+    NSString *sourceApplication = options[UIApplicationOpenURLOptionsSourceApplicationKey];
+    NSString *annotation = options[UIApplicationOpenURLOptionsAnnotationKey];
     return [[FileHandlerManager sharedManager] handleURL:url sourceApplication:sourceApplication annotation:annotation session:self.session];
 }
 
@@ -277,6 +275,7 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
     
     AccountsViewController *accountsViewController = [[AccountsViewController alloc] initWithConfiguration:initialConfiguration session:session];
     NavigationViewController *accountsNavigationController = [[NavigationViewController alloc] initWithRootViewController:accountsViewController];
+    accountsViewController.presentationPickerDelegate = self;
     
     SwitchViewController *switchController = [[SwitchViewController alloc] initWithInitialViewController:accountsNavigationController];
     
@@ -505,7 +504,6 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
                     if (successful)
                     {
                         [[AccountManager sharedManager] selectAccount:configuredAccount selectNetwork:nil alfrescoSession:nil];
-                        [[NSNotificationCenter defaultCenter] postNotificationName:kAlfrescoSessionReceivedNotification object:alfrescoSession userInfo:nil];
                     }
                 }];
             }
@@ -525,6 +523,13 @@ static NSString * const kMDMMissingRequiredKeysKey = @"MDMMissingKeysKey";
     }];
     
     return configurationErrorString;
+}
+
+#pragma mark - AccountPickerPresentation Delegate
+
+- (UIViewController *)accountPickerPresentationViewController
+{
+    return self.window.rootViewController;
 }
 
 @end

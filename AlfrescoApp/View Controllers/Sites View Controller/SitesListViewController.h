@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -19,7 +19,7 @@
 #import "ParentListViewController.h"
 #import "SitesCell.h"
 
-@interface SitesListViewController : ParentListViewController <UISearchBarDelegate, UISearchDisplayDelegate, SiteCellDelegate>
+@interface SitesListViewController : ParentListViewController <UISearchBarDelegate, UISearchControllerDelegate, SiteCellDelegate>
 
 @property (nonatomic, strong) AlfrescoSiteService *siteService;
 @property (nonatomic, strong) UISearchController *searchController;

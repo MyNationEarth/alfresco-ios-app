@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -30,7 +30,7 @@
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <AssetsLibrary/AssetsLibrary.h>
 
-static CGFloat const kCellHeight = 64.0f;
+static CGFloat const kCellHeight = 84.0f;
 
 @interface BaseFileFolderCollectionViewController () <UISearchControllerDelegate, UIPopoverPresentationControllerDelegate, RepositoryCollectionViewDataSourceDelegate, UIImagePickerControllerDelegate, DownloadsPickerDelegate, UINavigationControllerDelegate, UploadFormViewControllerDelegate>
 

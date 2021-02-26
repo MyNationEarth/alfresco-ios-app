@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -67,6 +67,18 @@ static NSString * const kWorkspaceNodePrefix = @"workspace://SpacesStore/";
     return nodeGUID;
 }
 
++ (NSString *)serverURLAddressStringFromAccount:(UserAccount *)account
+{
+    if (account.accountType == UserAccountTypeAIMS)
+    {
+        return [Utilities serverURLStringFromAccountAIMS:account];
+    }
+    else
+    {
+        return [Utilities serverURLStringFromAccount:(id<AKUserAccount>)account];
+    }
+}
+
 + (NSString *)serverURLStringFromAccount:(id<AKUserAccount>)account
 {
     NSURLComponents *url = [[NSURLComponents alloc] init];
@@ -77,6 +89,19 @@ static NSString * const kWorkspaceNodePrefix = @"workspace://SpacesStore/";
     url.port = [formatter numberFromString:account.serverPort];
     url.path = account.serviceDocument;
     
+    return [url string];
+}
+
++ (NSString *)serverURLStringFromAccountAIMS:(UserAccount *)account
+{
+    NSURLComponents *url = [[NSURLComponents alloc] init];
+    url.scheme = account.protocol;
+    url.host = account.contentAddress;
+    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    url.port = [formatter numberFromString:account.serverPort];
+    url.path = account.serviceDocument;
+    //TODO: add realm and clientID
     return [url string];
 }
 

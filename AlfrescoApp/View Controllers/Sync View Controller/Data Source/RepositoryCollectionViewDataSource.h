@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -58,6 +58,7 @@
 @property (nonatomic, strong) AlfrescoPermissions *parentFolderPermissions;
 @property (nonatomic) BOOL shouldAllowMultiselect;
 @property (nonatomic, strong) AlfrescoListingContext *defaultListingContext;
+@property (nonatomic) BOOL shouldAllowLayoutChange;
 
 - (instancetype)initWithParentNode:(AlfrescoNode *)node session:(id<AlfrescoSession>)session delegate:(id<RepositoryCollectionViewDataSourceDelegate>)delegate;
 - (AlfrescoNode *)alfrescoNodeAtIndex:(NSInteger)index;
@@ -70,5 +71,7 @@
 - (void)addAlfrescoNodes:(NSArray *)alfrescoNodes;
 - (void)reloadDataSource;
 - (AlfrescoFolder *)parentFolder;
+- (NSString*)getSearchType;
+
 
 @end

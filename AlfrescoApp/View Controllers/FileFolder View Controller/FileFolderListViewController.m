@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -32,6 +32,7 @@
 #import "FailedTransferDetailViewController.h"
 #import "AlfrescoNode+Sync.h"
 #import <Photos/Photos.h>
+#import "UIView+Orientation.h"
 
 static CGFloat const kCellHeight = 64.0f;
 
@@ -136,7 +137,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     searchController.delegate = self;
     searchController.searchBar.delegate = self;
     
-    searchController.dimsBackgroundDuringPresentation = NO;
+    searchController.obscuresBackgroundDuringPresentation = NO;
     searchController.hidesNavigationBarDuringPresentation = YES;
     
     // search bar
@@ -219,18 +220,22 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     _imagePickerController.delegate = nil;
 }
 
-- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
-    CGRect screenRect = [[UIScreen mainScreen] bounds];
-    // if going to landscape, use the screen height as the popover width and screen width as the popover height
-    if (UIInterfaceOrientationIsLandscape(toInterfaceOrientation))
-    {
-        self.popover.preferredContentSize = CGSizeMake(screenRect.size.height, screenRect.size.width);
-    }
-    else
-    {
-        self.popover.preferredContentSize = CGSizeMake(screenRect.size.width, screenRect.size.height);
-    }
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+        // what ever you want to prepare
+    } completion:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+        CGRect screenRect = [[UIScreen mainScreen] bounds];
+        // if going to landscape, use the screen height as the popover width and screen width as the popover height
+        if ([self.view isViewOrientationLandscape])
+        {
+            self.popover.preferredContentSize = CGSizeMake(screenRect.size.height, screenRect.size.width);
+        }
+        else
+        {
+            self.popover.preferredContentSize = CGSizeMake(screenRect.size.width, screenRect.size.height);
+        }
+    }];
 }
 
 #pragma mark - Custom getters and setters
@@ -613,13 +618,17 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     
     [self createAlfrescoServicesWithSession:session];
     
+    
     if (session && [self shouldRefresh])
     {
         [self loadContentOfFolder];
     }
     else if (self == [self.navigationController.viewControllers lastObject])
     {
-        [self.navigationController popToRootViewControllerAnimated:NO];
+        if (UserAccountTypeAIMS != [AccountManager sharedManager].selectedAccount.accountType)
+        {
+            [self.navigationController popToRootViewControllerAnimated:NO];
+        }
     }
 }
 
@@ -1056,7 +1065,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
                 }
                 else
                 {
-                    NSString *contentPath = [selectedNode contentPath];
+                    NSString *contentPath = [[RealmSyncCore sharedSyncCore] contentPathForNode:selectedNode forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];
                     BOOL isDirectory = NO;
                     if (![[AlfrescoFileManager sharedManager] fileExistsAtPath:contentPath isDirectory:&isDirectory])
                     {
@@ -1122,7 +1131,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
     if ([mediaType isEqualToString:(NSString *)kUTTypeImage])
     {
         UIImage *selectedImage = [info objectForKey:UIImagePickerControllerOriginalImage];
-        __block NSString *selectedImageExtension = [[[(NSURL *)[info objectForKey:UIImagePickerControllerReferenceURL] path] pathExtension] lowercaseString];
+        __block NSString *selectedImageExtension = [[[(NSURL *)[info objectForKey:UIImagePickerControllerImageURL] path] pathExtension] lowercaseString];
         
         // define an upload block
         void (^displayUploadForm)(NSDictionary *metadata, BOOL addGPSMetadata) = ^(NSDictionary *metadata, BOOL addGPSMetadata){
@@ -1174,8 +1183,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
         }
         else
         {
-            PHFetchResult *result = [PHAsset fetchAssetsWithALAssetURLs:@[info[UIImagePickerControllerReferenceURL]] options:nil];
-            PHAsset *asset = [result firstObject];
+            PHAsset *asset = info[UIImagePickerControllerPHAsset];
             
             [[PHImageManager defaultManager] requestImageDataForAsset:asset options:nil resultHandler:^(NSData * _Nullable imageData, NSString * _Nullable dataUTI, UIImageOrientation orientation, NSDictionary * _Nullable info) {
                 CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)imageData, NULL);
@@ -1187,7 +1195,7 @@ static CGFloat const kSearchBarAnimationDuration = 0.2f;
                 }
                 else
                 {
-                    AlfrescoLogError(@"Unable to extract metadata from item for URL: %@.", info[UIImagePickerControllerReferenceURL]);
+                    AlfrescoLogError(@"Unable to extract metadata from item for URL: %@.", info[UIImagePickerControllerImageURL]);
                 }
             }];
         }

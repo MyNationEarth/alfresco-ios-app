@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2015 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -21,12 +21,16 @@
 #import "MainMenuHeaderView.h"
 #import "LoginManager.h"
 #import "DownloadsViewController.h"
+#import "MainMenuConfigurationBuilder.h"
+#import "AFPDataManager.h"
+#import "AccountManager.h"
+#import "AccountsViewController.h"
 
 static NSString * const kMainMenuCellIdentifier = @"MainMenuCellIdentifier";
 static NSString * const kMainMenuHeaderViewIdentifier = @"MainMenuHeaderViewIdentifier";
 static NSTimeInterval const kHeaderFadeSpeed = 0.3f;
 
-@interface MainMenuViewController () <UITableViewDataSource, UITableViewDelegate, MainMenuGroupDelegate>
+@interface MainMenuViewController () <UITableViewDataSource, UITableViewDelegate, MainMenuGroupDelegate, AccountPickerPresentationDelegate>
 @property (nonatomic, strong, readwrite) MainMenuBuilder *builder;
 @property (nonatomic, strong, readwrite) NSArray *tableViewData;
 @property (nonatomic, strong, readwrite) MainMenuGroup *headerGroup;
@@ -300,6 +304,10 @@ static NSTimeInterval const kHeaderFadeSpeed = 0.3f;
         if (sections)
         {
             [self addSectionsFromArray:sections toGroupType:groupType];
+            if (groupType == MainMenuGroupTypeHeader)
+            {
+                [self setPresentationDeleateOnAccountsViewControllerFromArray:sections];
+            }
         }
         
         if (completionBlock != NULL)
@@ -316,6 +324,10 @@ static NSTimeInterval const kHeaderFadeSpeed = 0.3f;
         {
             [self clearGroupType:groupType];
             [self addSectionsFromArray:sections toGroupType:groupType];
+            if (groupType == MainMenuGroupTypeHeader)
+            {
+                [self setPresentationDeleateOnAccountsViewControllerFromArray:sections];
+            }
         }
         
         if (completionBlock != NULL)
@@ -323,6 +335,31 @@ static NSTimeInterval const kHeaderFadeSpeed = 0.3f;
             completionBlock();
         }
     }];
+}
+
+
+- (void)setPresentationDeleateOnAccountsViewControllerFromArray:(NSArray *)array
+{
+    for (MainMenuSection *section in array)
+    {
+        for (MainMenuItem *item in section.allSectionItems)
+        {
+            id object = item.associatedObject;
+            if ([object isKindOfClass:[AccountsViewController class]])
+            {
+                ((AccountsViewController*)object).presentationPickerDelegate = self;
+            }
+            if ([object isKindOfClass:[UINavigationController class]])
+            {
+                for (UIViewController* viewController in ((UINavigationController*)object).viewControllers) {
+                    if ([viewController isKindOfClass:[AccountsViewController class]])
+                    {
+                        ((AccountsViewController*)viewController).presentationPickerDelegate = self;
+                    }
+                }
+            }
+        }
+    }
 }
 
 - (void)sectionsForGroupType:(MainMenuGroupType)groupType completionBlock:(void (^)(NSArray *sections))completionBlock
@@ -550,7 +587,24 @@ static NSTimeInterval const kHeaderFadeSpeed = 0.3f;
     dispatch_async(dispatch_get_main_queue(), ^{
         [self visibilityForSectionHeadersHidden:YES animated:YES];
     });
-
+    
+    if([self.builder isKindOfClass:[MainMenuConfigurationBuilder class]])
+    {
+        NSMutableArray *visibleMenuItems = [NSMutableArray new];
+        for (MainMenuSection *section in self.tableViewData)
+        {
+            [visibleMenuItems addObjectsFromArray:section.visibleSectionItems];
+        }
+        
+        MainMenuConfigurationBuilder *menuConfigBuilder = (MainMenuConfigurationBuilder *)self.builder;
+        [menuConfigBuilder viewConfigCollectionForMenuItemCollection:visibleMenuItems completionBlock:^(NSArray *configs, NSError *error) {
+            if(configs)
+            {
+                [[AFPDataManager sharedManager] updateMenuItemsWithVisibleCollectionOfViewConfigs:configs forAccount:[AccountManager sharedManager].selectedAccount];
+            }
+        }];
+    }
+    
     // Select the previous selected item identifier. If not found, select the first item.
     NSIndexPath *indexPath = [self indexPathForItemWithIdentifier:self.previouslySelectedIdentifier];
     if (indexPath == nil)
@@ -560,5 +614,13 @@ static NSTimeInterval const kHeaderFadeSpeed = 0.3f;
     
     [self.tableView selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
 }
+
+#pragma mark - AccountPickerPresentation Delegate
+
+- (UIViewController *)accountPickerPresentationViewController
+{
+    return self;
+}
+
 
 @end

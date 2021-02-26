@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2014 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  * 
  * This file is part of the Alfresco Mobile iOS App.
  * 
@@ -18,7 +18,7 @@
  
 #import "BaseInboundURLHandler.h"
 #import "DownloadManager.h"
-
+#import "AccountManager.h"
 #import "RealmSyncManager.h"
 
 @interface BaseInboundURLHandler () <NSFileManagerDelegate>

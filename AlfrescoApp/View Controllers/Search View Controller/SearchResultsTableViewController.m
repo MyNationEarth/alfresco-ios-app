@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2005-2017 Alfresco Software Limited.
+ * Copyright (C) 2005-2020 Alfresco Software Limited.
  *
  * This file is part of the Alfresco Mobile iOS App.
  *
@@ -27,6 +27,8 @@
 #import "RootRevealViewController.h"
 #import "SearchResultsTableViewDataSource.h"
 #import "UIBarButtonItem+MainMenu.h"
+#import "RealmSyncCore.h"
+#import "AccountManager.h"
 
 static CGFloat const kCellHeight = 73.0f;
 
@@ -131,6 +133,11 @@ static CGFloat const kCellHeight = 73.0f;
     return kCellHeight;
 }
 
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return kCellHeight;
+}
+
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if(self.dataSource.searchResultsArray.count)
@@ -149,7 +156,7 @@ static CGFloat const kCellHeight = 73.0f;
                     }
                     else
                     {
-                        NSString *contentPath = [(AlfrescoDocument *)currentItem contentPath];
+                        NSString *contentPath = [[RealmSyncCore sharedSyncCore] contentPathForNode:currentItem forAccountIdentifier:[AccountManager sharedManager].selectedAccount.accountIdentifier];
                         BOOL isDirectory = NO;
                         if (![[AlfrescoFileManager sharedManager] fileExistsAtPath:contentPath isDirectory:&isDirectory])
                         {
